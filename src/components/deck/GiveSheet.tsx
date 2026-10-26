@@ -296,10 +296,11 @@ function Chip({
   );
 }
 
-export function MiniCard({ card, pct }: { card: RequestCard; pct?: number }) {
+/** `shared` links the portrait to the deck card / celebration via layoutId (off once the sheet changes height). */
+export function MiniCard({ card, pct, shared = true }: { card: RequestCard; pct?: number; shared?: boolean }) {
   return (
     <div className="flex items-center gap-4">
-      <m.div layoutId={`art-${card.id}`} transition={spring.layout} className="size-16 shrink-0 overflow-hidden rounded-[18px]">
+      <m.div layoutId={shared ? `art-${card.id}` : undefined} transition={spring.layout} className="size-16 shrink-0 overflow-hidden rounded-[18px]">
         <Avatar seed={card.avatarSeed} name={card.firstName} photoUrl={card.photoUrl} blur={card.blurPhoto} shape="card" className="size-full" />
       </m.div>
       <div className="min-w-0 flex-1">
@@ -322,7 +323,7 @@ function GiftConfirmed({ card, result, onDone }: { card: RequestCard; result: Gi
 
   return (
     <div className="pb-1">
-      <MiniCard card={result.request} pct={shown} />
+      <MiniCard card={result.request} pct={shown} shared={false} />
       <div className="mt-7 text-center">
         <div className="mx-auto mb-4 grid size-11 place-items-center rounded-full bg-gold-soft text-gold-ink">
           <Check className="size-5" aria-hidden />
