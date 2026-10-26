@@ -1,4 +1,4 @@
-import { motion, type HTMLMotionProps } from "motion/react";
+import { m, type HTMLMotionProps } from "motion/react";
 import { forwardRef, type ReactNode } from "react";
 import { Link, type LinkProps } from "react-router";
 import { spring } from "@/design/motion";
@@ -43,7 +43,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
   ref,
 ) {
   return (
-    <motion.button
+    <m.button
       ref={ref}
       whileTap={{ scale: 0.97 }}
       transition={spring.snappy}
@@ -56,16 +56,16 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       {...props}
     >
       {magnetic ? <MagneticInner>{children}</MagneticInner> : children}
-    </motion.button>
+    </m.button>
   );
 });
 
 function MagneticInner({ children }: { children: ReactNode }) {
   const { ref, style } = useMagnetic<HTMLSpanElement>(0.22);
   return (
-    <motion.span ref={ref} style={style} className="inline-flex items-center gap-[inherit] -m-4 p-4">
+    <m.span ref={ref} style={style} className="inline-flex items-center gap-[inherit] -m-4 p-4">
       {children}
-    </motion.span>
+    </m.span>
   );
 }
 
@@ -73,9 +73,9 @@ function MagneticInner({ children }: { children: ReactNode }) {
 export function Magnetic({ children, className, strength = 0.3 }: { children: ReactNode; className?: string; strength?: number }) {
   const { ref, style } = useMagnetic<HTMLDivElement>(strength);
   return (
-    <motion.div ref={ref} style={style} className={cn("inline-flex", className)}>
+    <m.div ref={ref} style={style} className={cn("inline-flex", className)}>
       {children}
-    </motion.div>
+    </m.div>
   );
 }
 
@@ -85,7 +85,7 @@ export const IconButton = forwardRef<
 >(function IconButton({ label, className, tone = "surface", size = "md", children, ...props }, ref) {
   const dims = size === "lg" ? "size-14" : size === "sm" ? "size-9" : "size-11";
   return (
-    <motion.button
+    <m.button
       ref={ref}
       aria-label={label}
       title={label}
@@ -100,6 +100,6 @@ export const IconButton = forwardRef<
       {...props}
     >
       {children}
-    </motion.button>
+    </m.button>
   );
 });

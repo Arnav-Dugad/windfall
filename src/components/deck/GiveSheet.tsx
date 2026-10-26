@@ -1,6 +1,6 @@
 import { useMutation } from "@tanstack/react-query";
 import { Check, Lock } from "lucide-react";
-import { AnimatePresence, motion, useSpring, useTransform } from "motion/react";
+import { AnimatePresence, m, useSpring, useTransform } from "motion/react";
 import { Slider, Switch } from "radix-ui";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { RequestCard } from "@shared/domain";
@@ -151,7 +151,7 @@ function GiveForm({
         <AmountDisplay cents={amount} />
         <AnimatePresence initial={false}>
           {choice.kind === "custom" && (
-            <motion.div
+            <m.div
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: "auto" }}
               exit={{ opacity: 0, height: 0 }}
@@ -184,7 +184,7 @@ function GiveForm({
                   <span>{formatUSD(remaining)}</span>
                 </div>
               </div>
-            </motion.div>
+            </m.div>
           )}
         </AnimatePresence>
       </div>
@@ -245,7 +245,7 @@ function AmountDisplay({ cents }: { cents: number }) {
   const text = useTransform(mv, (v) => formatUSD(Math.round(v / 100) * 100));
   return (
     <div className="text-center" aria-live="polite">
-      <motion.output className="display num block text-[3.6rem] leading-none tracking-[-0.02em]">{text}</motion.output>
+      <m.output className="display num block text-[3.6rem] leading-none tracking-[-0.02em]">{text}</m.output>
     </div>
   );
 }
@@ -264,7 +264,7 @@ function Chip({
   className?: string;
 }) {
   return (
-    <motion.button
+    <m.button
       type="button"
       role="radio"
       aria-checked={active}
@@ -281,7 +281,7 @@ function Chip({
       )}
     >
       {active && (
-        <motion.span
+        <m.span
           layoutId="give-chip"
           transition={spring.snappy}
           className={cn(
@@ -292,16 +292,16 @@ function Chip({
       )}
       {!active && <span className="absolute inset-0 rounded-full shadow-[inset_0_0_0_1px_var(--wf-line-strong)]" />}
       <span className="relative">{children}</span>
-    </motion.button>
+    </m.button>
   );
 }
 
 export function MiniCard({ card, pct }: { card: RequestCard; pct?: number }) {
   return (
     <div className="flex items-center gap-4">
-      <motion.div layoutId={`art-${card.id}`} transition={spring.layout} className="size-16 shrink-0 overflow-hidden rounded-[18px]">
+      <m.div layoutId={`art-${card.id}`} transition={spring.layout} className="size-16 shrink-0 overflow-hidden rounded-[18px]">
         <Avatar seed={card.avatarSeed} name={card.firstName} photoUrl={card.photoUrl} blur={card.blurPhoto} shape="card" className="size-full" />
-      </motion.div>
+      </m.div>
       <div className="min-w-0 flex-1">
         <p className="truncate text-[14px] text-ink-2">{card.headline}</p>
         <Progress className="mt-2.5" value={pct ?? progress(card.goalCents, card.fundedCents)} />

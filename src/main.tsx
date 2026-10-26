@@ -1,15 +1,14 @@
-import "@fontsource-variable/geist/wght.css";
-import "@fontsource/instrument-serif/latin-400.css";
-import "@fontsource/instrument-serif/latin-400-italic.css";
 import "./index.css";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { MotionConfig } from "motion/react";
+import { LazyMotion, MotionConfig } from "motion/react";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router";
 import { App } from "./App";
 import { ApiError } from "./lib/api";
+
+const loadMotionFeatures = () => import("./lib/motion-features").then((m) => m.default);
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -25,9 +24,11 @@ createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       <MotionConfig reducedMotion="user">
-        <BrowserRouter>
-          <App />
-        </BrowserRouter>
+        <LazyMotion features={loadMotionFeatures} strict>
+          <BrowserRouter>
+            <App />
+          </BrowserRouter>
+        </LazyMotion>
       </MotionConfig>
     </QueryClientProvider>
   </StrictMode>,

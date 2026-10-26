@@ -1,4 +1,4 @@
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, m } from "motion/react";
 import { Dialog } from "radix-ui";
 import { useEffect, useState } from "react";
 import type { RequestCard } from "@shared/domain";
@@ -34,14 +34,14 @@ export function Celebration({
         {card && (
           <Dialog.Portal forceMount>
             <Dialog.Content asChild forceMount aria-describedby={undefined}>
-              <motion.div
+              <m.div
                 className="fixed inset-0 z-[70] flex items-center justify-center overflow-hidden bg-canvas/95 px-6 outline-none backdrop-blur-xl"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.4 }}
               >
-                <motion.div
+                <m.div
                   aria-hidden
                   className="pointer-events-none absolute top-1/2 left-1/2 size-[80vmax] -translate-x-1/2 -translate-y-1/2 rounded-full"
                   style={{ background: "radial-gradient(closest-side, color-mix(in oklab, var(--wf-gold) 28%, transparent), transparent)" }}
@@ -50,32 +50,32 @@ export function Celebration({
                   transition={{ duration: 1.4, ease: ease.outExpo }}
                 />
                 <div className="relative flex max-w-xl flex-col items-center text-center">
-                  <motion.div
+                  <m.div
                     layoutId={`art-${card.id}`}
                     transition={spring.layout}
                     className="size-36 overflow-hidden rounded-[40px] shadow-glow sm:size-44"
                   >
                     <Avatar seed={card.avatarSeed} name={card.firstName} photoUrl={card.photoUrl} blur={card.blurPhoto} shape="card" className="size-full" />
-                  </motion.div>
-                  <motion.p
+                  </m.div>
+                  <m.p
                     className="eyebrow mt-8 text-sage-ink"
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.35, duration: 0.6, ease: ease.outExpo }}
                   >
                     Fully funded
-                  </motion.p>
+                  </m.p>
                   <Dialog.Title asChild>
-                    <motion.h2
+                    <m.h2
                       className="display mt-3 text-display-lg text-balance"
                       initial={{ opacity: 0, y: 18 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.45, duration: 0.8, ease: ease.outExpo }}
                     >
                       You cleared <em className="gold-sheen not-italic">{possessive(card.firstName)}</em> debt.
-                    </motion.h2>
+                    </m.h2>
                   </Dialog.Title>
-                  <motion.p
+                  <m.p
                     className="mt-5 text-[16px] text-ink-2 text-pretty"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
@@ -85,8 +85,8 @@ export function Celebration({
                     <span className="num">{card.giftCount}</span> {card.giftCount === 1 ? "Patron" : "Patrons"} in{" "}
                     <span className="num">{days}</span> {days === 1 ? "day" : "days"}. {card.firstName} will hear about it
                     tonight.
-                  </motion.p>
-                  <motion.div
+                  </m.p>
+                  <m.div
                     className="mt-9 flex flex-col gap-3 sm:flex-row"
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -100,10 +100,10 @@ export function Celebration({
                         Read {possessive(card.firstName)} story
                       </Button>
                     )}
-                  </motion.div>
+                  </m.div>
                   <p className="mt-6 text-[12px] text-ink-3">Demo — {card.firstName} is a fictional person.</p>
                 </div>
-              </motion.div>
+              </m.div>
             </Dialog.Content>
           </Dialog.Portal>
         )}

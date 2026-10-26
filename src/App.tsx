@@ -1,13 +1,14 @@
 import { AnimatePresence } from "motion/react";
 import { lazy, Suspense, type ReactNode } from "react";
 import { Navigate, Route, Routes, useLocation, type Location } from "react-router";
-import { AppShell, PageFallback } from "@/components/layout/AppShell";
+import { PageFallback } from "@/components/layout/PageFallback";
+import Landing from "@/routes/Landing";
 import { LiveAnnouncer, Toaster } from "@/components/ui/Toaster";
 import { useMe } from "@/lib/hooks";
 import { homeFor, loadStory } from "@/lib/routes";
 
-// Route-level code splitting.
-const Landing = lazy(() => import("@/routes/Landing"));
+// Route-level code splitting (the signed-in shell too, so the landing page stays light).
+const AppShell = lazy(() => import("@/components/layout/AppShell"));
 const Login = lazy(() => import("@/routes/Login"));
 const Discover = lazy(() => import("@/routes/Discover"));
 const Story = lazy(loadStory);

@@ -1,4 +1,4 @@
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import { duration, ease } from "@/design/motion";
 import { cn } from "@/lib/utils";
 
@@ -29,7 +29,7 @@ export function Progress({
         className,
       )}
     >
-      <motion.div
+      <m.div
         className={cn(
           "absolute inset-y-0 left-0 w-full origin-left rounded-full",
           done ? "bg-sage" : "bg-gradient-to-r from-gold/70 to-gold",

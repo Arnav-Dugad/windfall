@@ -1,4 +1,4 @@
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import { CATEGORY_LABELS, type RequestCard } from "@shared/domain";
 import { formatUSD, progress, remainingCents } from "@shared/money";
 import { Avatar } from "@/components/ui/Avatar";
@@ -21,7 +21,7 @@ export function SwipeCard({ card, className, interactive = true }: { card: Reque
       )}
       aria-label={`${card.firstName}, ${card.city}. ${card.headline}`}
     >
-      <motion.div
+      <m.div
         layoutId={interactive ? `art-${card.id}` : undefined}
         transition={spring.layout}
         className="relative h-[52%] shrink-0 overflow-hidden rounded-t-card"
@@ -42,14 +42,14 @@ export function SwipeCard({ card, className, interactive = true }: { card: Reque
           {card.isDemo && <DemoBadge label="Demo" className="bg-white/70 backdrop-blur-md dark:bg-black/40" />}
         </div>
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/10 to-transparent" />
-      </motion.div>
+      </m.div>
 
       <div className="flex min-h-0 flex-1 flex-col px-5 pt-4 pb-5 sm:px-6">
         <div className="flex items-baseline justify-between gap-3">
-          <h3 className="display text-[2.1rem] leading-none tracking-[-0.01em]">
+          <h2 className="display text-[2.1rem] leading-none tracking-[-0.01em]">
             {card.firstName}
             {card.age ? <span className="text-ink-3">, {card.age}</span> : null}
-          </h3>
+          </h2>
           <span className="truncate text-[13px] text-ink-3">
             {card.city}, {card.country}
           </span>

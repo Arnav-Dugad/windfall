@@ -1,4 +1,4 @@
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, m } from "motion/react";
 import { useId, useMemo, useState } from "react";
 import { formatCompactUSD, formatUSD } from "@shared/money";
 import { ease } from "@/design/motion";
@@ -47,7 +47,7 @@ export function GivingChart({ series }: { series: { weekStart: number; totalCent
           return (
             <g key={s.weekStart}>
               {h > 0 && (
-                <motion.path
+                <m.path
                   d={`M${x},${8 + plotH} V${y + r} Q${x},${y} ${x + r},${y} H${x + barW - r} Q${x + barW},${y} ${x + barW},${y + r} V${8 + plotH} Z`}
                   fill="var(--wf-chart)"
                   initial={{ scaleY: 0, opacity: 0 }}
@@ -70,7 +70,7 @@ export function GivingChart({ series }: { series: { weekStart: number; totalCent
       </svg>
       <AnimatePresence>
         {active && hover !== null && (
-          <motion.div
+          <m.div
             initial={{ opacity: 0, y: 4 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
@@ -83,7 +83,7 @@ export function GivingChart({ series }: { series: { weekStart: number; totalCent
           >
             <div className="opacity-70">Week of {fmtWeek(active.weekStart)}</div>
             <div className="num font-medium">{formatUSD(active.totalCents)}</div>
-          </motion.div>
+          </m.div>
         )}
       </AnimatePresence>
       <details className="mt-3 text-[13px] text-ink-2">

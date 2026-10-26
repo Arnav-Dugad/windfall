@@ -1,6 +1,6 @@
 import { useMutation } from "@tanstack/react-query";
 import { Check, FileUp, ImagePlus } from "lucide-react";
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, m } from "motion/react";
 import { useId, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -73,23 +73,23 @@ export function FileDrop({
       >
         <AnimatePresence mode="wait" initial={false}>
           {upload.isPending ? (
-            <motion.span key="up" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex flex-col items-center gap-2">
+            <m.span key="up" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex flex-col items-center gap-2">
               <span className="size-6 animate-spin rounded-full border-2 border-ink/20 border-t-ink" aria-hidden />
               <span className="text-[14px] font-medium">Uploading securely…</span>
-            </motion.span>
+            </m.span>
           ) : done ? (
-            <motion.span key="done" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="flex flex-col items-center gap-2 text-sage-ink">
+            <m.span key="done" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="flex flex-col items-center gap-2 text-sage-ink">
               <span className="grid size-9 place-items-center rounded-full bg-sage text-white">
                 <Check className="size-5" aria-hidden />
               </span>
               <span className="max-w-full truncate text-[14px] font-medium">{done}</span>
               <span className="text-[12.5px]">Tap to replace</span>
-            </motion.span>
+            </m.span>
           ) : (
-            <motion.span key="idle" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex flex-col items-center gap-2">
+            <m.span key="idle" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex flex-col items-center gap-2">
               <Icon className="size-6 text-ink-2" aria-hidden />
               <span className="text-[14.5px] font-medium">{kind === "photo" ? "Add a photo" : "Upload a statement or bill"}</span>
-            </motion.span>
+            </m.span>
           )}
         </AnimatePresence>
         <span id={`${id}-hint`} className="text-[12.5px] text-ink-3">

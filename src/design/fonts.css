@@ -1,0 +1,46 @@
+/*
+ * Self-hosted fonts at stable URLs so index.html can preload them before CSS/JS are parsed.
+ * Each family has a metric-matched local fallback (size/ascent/descent overrides measured against
+ * the real fonts) so a late swap barely moves the layout.
+ */
+
+@font-face {
+  font-family: "Instrument Serif";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/instrument-serif-latin.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Instrument Serif";
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/instrument-serif-latin-italic.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Geist Variable";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("/fonts/geist-latin.woff2") format("woff2");
+}
+
+/* Instrument Serif ≈ 83% of Times New Roman's advance width. */
+@font-face {
+  font-family: "Instrument Serif Fallback";
+  src: local("Times New Roman"), local("Times"), local("Liberation Serif"), local("Noto Serif");
+  size-adjust: 83%;
+  ascent-override: 119%;
+  descent-override: 37%;
+  line-gap-override: 0%;
+}
+/* Geist ≈ 103.6% of Arial's advance width. */
+@font-face {
+  font-family: "Geist Fallback";
+  src: local("Arial"), local("Helvetica"), local("Liberation Sans"), local("Roboto");
+  size-adjust: 103.6%;
+  ascent-override: 97.5%;
+  descent-override: 29%;
+  line-gap-override: 0%;
+}

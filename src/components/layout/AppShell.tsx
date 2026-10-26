@@ -1,6 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { Bookmark, Layers, LogOut, Plus, Sparkles, Trophy, UserRound, Home, EyeOff } from "lucide-react";
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import { DropdownMenu } from "radix-ui";
 import { Suspense } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router";
@@ -8,12 +8,12 @@ import type { PublicUser } from "@shared/domain";
 import { Avatar } from "@/components/ui/Avatar";
 import { DemoBadge } from "@/components/ui/Badge";
 import { Logo, ThemeToggle } from "@/components/ui/Brand";
-import { Skeleton } from "@/components/ui/Feedback";
 import { toast } from "@/lib/toast";
 import { spring } from "@/design/motion";
 import { api } from "@/lib/api";
 import { useMe, useSignOut } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
+import { PageFallback } from "./PageFallback";
 
 const NAV = {
   patron: [
@@ -28,7 +28,7 @@ const NAV = {
   ],
 } as const;
 
-export function AppShell() {
+export default function AppShell() {
   const { data } = useMe();
   const user = data?.user ?? null;
   const items = user ? NAV[user.role] : [];
@@ -57,7 +57,7 @@ export function AppShell() {
                   {({ isActive }) => (
                     <>
                       {isActive && (
-                        <motion.span layoutId="nav-pill" transition={spring.snappy} className="absolute inset-0 rounded-full bg-surface shadow-sm" />
+                        <m.span layoutId="nav-pill" transition={spring.snappy} className="absolute inset-0 rounded-full bg-surface shadow-sm" />
                       )}
                       <item.icon className="relative size-4" aria-hidden />
                       <span className="relative">{item.label}</span>
@@ -76,7 +76,7 @@ export function AppShell() {
       </header>
 
       <Suspense fallback={<PageFallback />}>
-        <motion.div
+        <m.div
           key={location.pathname}
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
@@ -84,7 +84,7 @@ export function AppShell() {
           className={cn(items.length > 0 && "pb-[calc(env(safe-area-inset-bottom)+5rem)] md:pb-0")}
         >
           <Outlet />
-        </motion.div>
+        </m.div>
       </Suspense>
 
       {items.length > 0 && <TabBar items={items} />}
@@ -114,7 +114,7 @@ function TabBar({ items }: { items: readonly { to: string; label: string; icon: 
             {({ isActive }) => (
               <>
                 {isActive && (
-                  <motion.span layoutId="tab-dot" transition={spring.snappy} className="absolute top-1.5 h-1 w-6 rounded-full bg-gold" />
+                  <m.span layoutId="tab-dot" transition={spring.snappy} className="absolute top-1.5 h-1 w-6 rounded-full bg-gold" />
                 )}
                 <item.icon className="size-5" aria-hidden strokeWidth={isActive ? 2.2 : 1.8} />
                 {item.label}
@@ -193,19 +193,5 @@ function MenuItem({ children, onSelect, icon: Icon }: { children: React.ReactNod
       <Icon className="size-4 text-ink-2" aria-hidden />
       {children}
     </DropdownMenu.Item>
-  );
-}
-
-export function PageFallback() {
-  return (
-    <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6" aria-busy="true" aria-label="Loading">
-      <Skeleton className="h-10 w-56" />
-      <Skeleton className="mt-4 h-5 w-80 max-w-full" />
-      <div className="mt-10 grid gap-4 sm:grid-cols-3">
-        <Skeleton className="h-36" />
-        <Skeleton className="h-36" />
-        <Skeleton className="h-36" />
-      </div>
-    </div>
   );
 }

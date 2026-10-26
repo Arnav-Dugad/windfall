@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, ArrowRight, Check, Plus, Trash2 } from "lucide-react";
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, m } from "motion/react";
 import { Switch } from "radix-ui";
 import { useEffect, useId, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router";
@@ -197,7 +197,7 @@ export default function NewRequest() {
               {label}
               {i < step ? " (done)" : ""}
             </span>
-            <motion.span
+            <m.span
               className="block h-full origin-left rounded-full bg-gold"
               initial={false}
               animate={{ scaleX: i <= step ? 1 : 0 }}
@@ -209,7 +209,7 @@ export default function NewRequest() {
 
       <div className="relative mt-10">
         <AnimatePresence mode="wait" custom={dir} initial={false}>
-          <motion.section
+          <m.section
             key={step}
             custom={dir}
             variants={{
@@ -227,13 +227,13 @@ export default function NewRequest() {
               {STEPS[step]}
             </h1>
             <div className="mt-8">{panels[step]}</div>
-          </motion.section>
+          </m.section>
         </AnimatePresence>
       </div>
 
       <AnimatePresence>
         {error && (
-          <motion.p
+          <m.p
             role="alert"
             initial={{ opacity: 0, y: -4 }}
             animate={{ opacity: 1, y: 0 }}
@@ -241,7 +241,7 @@ export default function NewRequest() {
             className="mt-6 rounded-control bg-danger/10 px-4 py-3 text-[14px] text-danger"
           >
             {error}
-          </motion.p>
+          </m.p>
         )}
       </AnimatePresence>
 
@@ -329,7 +329,7 @@ function AmountStep({ draft, setDraft, total }: { draft: Draft; setDraft: React.
       <ul className="mt-6 space-y-3">
         <AnimatePresence initial={false}>
           {draft.breakdown.map((b, i) => (
-            <motion.li
+            <m.li
               key={i}
               layout
               initial={{ opacity: 0, height: 0 }}
@@ -366,7 +366,7 @@ function AmountStep({ draft, setDraft, total }: { draft: Draft; setDraft: React.
               >
                 <Trash2 className="size-4" aria-hidden />
               </button>
-            </motion.li>
+            </m.li>
           ))}
         </AnimatePresence>
       </ul>

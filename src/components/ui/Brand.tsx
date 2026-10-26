@@ -1,5 +1,5 @@
 import { Moon, Sun } from "lucide-react";
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, m } from "motion/react";
 import { Link } from "react-router";
 import { spring } from "@/design/motion";
 import { useTheme } from "@/lib/hooks";
@@ -39,7 +39,7 @@ export function ThemeToggle({ className }: { className?: string }) {
       onClick={() => setTheme(next)}
     >
       <AnimatePresence mode="wait" initial={false}>
-        <motion.span
+        <m.span
           key={theme}
           initial={{ opacity: 0, rotate: -60, scale: 0.6 }}
           animate={{ opacity: 1, rotate: 0, scale: 1 }}
@@ -48,7 +48,7 @@ export function ThemeToggle({ className }: { className?: string }) {
           className="grid place-items-center"
         >
           {theme === "dark" ? <Sun className="size-4.5" aria-hidden /> : <Moon className="size-4.5" aria-hidden />}
-        </motion.span>
+        </m.span>
       </AnimatePresence>
     </IconButton>
   );

@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, BadgeCheck, Flag, HandCoins, MessageCircleHeart, Newspaper, X } from "lucide-react";
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import { RadioGroup } from "radix-ui";
 import { useCallback, useEffect, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router";
@@ -70,7 +70,7 @@ export function StoryOverlay() {
 
   return (
     <div className="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-label="Story">
-      <motion.div
+      <m.div
         className="absolute inset-0 bg-scrim"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -78,7 +78,7 @@ export function StoryOverlay() {
         onClick={close}
       />
       <div className="pointer-events-none absolute inset-0 overflow-y-auto overscroll-contain sm:px-6 sm:py-10">
-        <motion.div
+        <m.div
           className="pointer-events-auto relative mx-auto min-h-full max-w-3xl bg-canvas px-4 pt-4 pb-16 sm:min-h-0 sm:rounded-sheet sm:px-8 sm:pt-8 sm:shadow-float"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -93,7 +93,7 @@ export function StoryOverlay() {
           <div className="-mt-11">
             {q.isPending ? <StorySkeleton /> : q.error ? <ErrorState error={q.error} /> : <StoryContent story={q.data.request} />}
           </div>
-        </motion.div>
+        </m.div>
       </div>
     </div>
   );
@@ -119,15 +119,15 @@ function StoryContent({ story }: { story: RequestDetail }) {
 
   return (
     <article>
-      <motion.div
+      <m.div
         layoutId={`art-${story.id}`}
         transition={spring.layout}
         className="relative aspect-[4/3] w-full overflow-hidden rounded-card sm:aspect-[16/9]"
       >
         <Avatar seed={story.avatarSeed} name={story.firstName} photoUrl={story.photoUrl} blur={story.blurPhoto} shape="card" className="absolute inset-0" />
-      </motion.div>
+      </m.div>
 
-      <motion.header className="mt-7" {...stagger(0)}>
+      <m.header className="mt-7" {...stagger(0)}>
         <div className="flex flex-wrap items-center gap-2">
           <Badge>{CATEGORY_LABELS[story.category]}</Badge>
           <VerificationBadge status={story.verification} />
@@ -143,9 +143,9 @@ function StoryContent({ story }: { story: RequestDetail }) {
           {story.city}, {story.country} · posted {timeAgo(story.createdAt)}
         </p>
         <p className="display mt-6 text-[1.85rem] leading-[1.15] text-balance sm:text-[2.2rem]">“{story.headline}”</p>
-      </motion.header>
+      </m.header>
 
-      <motion.section {...stagger(1)} aria-label="Funding" className="card-surface mt-8 p-5 sm:p-7">
+      <m.section {...stagger(1)} aria-label="Funding" className="card-surface mt-8 p-5 sm:p-7">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <p className="eyebrow">Raised</p>
@@ -173,9 +173,9 @@ function StoryContent({ story }: { story: RequestDetail }) {
             <p className="self-center text-[13px] text-ink-3 num sm:max-w-44">{formatUSD(remaining)} would clear it completely.</p>
           </div>
         )}
-      </motion.section>
+      </m.section>
 
-      <motion.section {...stagger(2)} className="mt-12" aria-labelledby="story-h">
+      <m.section {...stagger(2)} className="mt-12" aria-labelledby="story-h">
         <h2 id="story-h" className="eyebrow">
           In {possessive(story.firstName)} words
         </h2>
@@ -184,9 +184,9 @@ function StoryContent({ story }: { story: RequestDetail }) {
             <p key={i}>{p}</p>
           ))}
         </div>
-      </motion.section>
+      </m.section>
 
-      <motion.section {...stagger(3)} className="mt-12" aria-labelledby="breakdown-h">
+      <m.section {...stagger(3)} className="mt-12" aria-labelledby="breakdown-h">
         <h2 id="breakdown-h" className="eyebrow">
           Where the money goes
         </h2>
@@ -205,9 +205,9 @@ function StoryContent({ story }: { story: RequestDetail }) {
             <span className="num">{formatUSD(story.goalCents)}</span>
           </li>
         </ul>
-      </motion.section>
+      </m.section>
 
-      <motion.section {...stagger(4)} className="mt-12" aria-labelledby="verify-h">
+      <m.section {...stagger(4)} className="mt-12" aria-labelledby="verify-h">
         <h2 id="verify-h" className="eyebrow">
           Verification
         </h2>
@@ -221,10 +221,10 @@ function StoryContent({ story }: { story: RequestDetail }) {
                 : `${story.firstName} hasn’t uploaded proof yet. Patrons can filter for verified stories only.`}
           </p>
         </div>
-      </motion.section>
+      </m.section>
 
       {story.updates.length > 0 && (
-        <motion.section {...stagger(5)} className="mt-12" aria-labelledby="updates-h">
+        <m.section {...stagger(5)} className="mt-12" aria-labelledby="updates-h">
           <h2 id="updates-h" className="eyebrow">
             Updates from {story.firstName}
           </h2>
@@ -241,7 +241,7 @@ function StoryContent({ story }: { story: RequestDetail }) {
               </li>
             ))}
           </ol>
-        </motion.section>
+        </m.section>
       )}
 
       <div className="mt-14 flex flex-wrap items-center justify-between gap-4 border-t border-line pt-6 text-[13px] text-ink-3">

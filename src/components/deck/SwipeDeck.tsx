@@ -1,7 +1,7 @@
 import {
   animate,
   AnimatePresence,
-  motion,
+  m,
   useMotionValue,
   useMotionValueEvent,
   useTransform,
@@ -206,17 +206,18 @@ function DeckCard({
   };
 
   return (
-    <motion.div
+    <m.div
       className="absolute inset-0 origin-bottom"
       style={{ zIndex: 10 - depth }}
       initial={returningFrom ? false : { opacity: 0, scale: slot.scale * 0.94, y: slot.y + 24 }}
       animate={{ opacity: slot.opacity, scale: slot.scale, y: slot.y }}
       exit={{ opacity: 1, zIndex: 20, transition: { duration: 0.6 } }}
       transition={spring.stack}
-      aria-hidden={!isTop}
+      // Behind cards are decorative until they reach the top: inert removes them from focus and the a11y tree.
+      inert={!isTop}
     >
-      <motion.div className="h-full w-full" style={{ scale: leanScale, y: leanY }}>
-        <motion.div
+      <m.div className="h-full w-full" style={{ scale: leanScale, y: leanY }}>
+        <m.div
           className={cn("relative h-full w-full origin-[50%_85%]", isTop && "cursor-grab active:cursor-grabbing")}
           style={{ x, y, rotate, rotateX, rotateY, touchAction: axis === "x" ? "pan-y" : "none" }}
           drag={isTop ? (axis === "x" ? "x" : true) : false}
@@ -241,9 +242,9 @@ function DeckCard({
               />
             </>
           )}
-        </motion.div>
-      </motion.div>
-    </motion.div>
+        </m.div>
+      </m.div>
+    </m.div>
   );
 }
 
@@ -267,7 +268,7 @@ function Stamp({
   };
   return (
     <div className={cn("pointer-events-none absolute", className)} aria-hidden>
-      <motion.div
+      <m.div
         style={{ opacity, scale }}
         className={cn(
           "rounded-[14px] border-[2.5px] px-4 py-1.5 text-[22px] font-semibold tracking-[0.12em] uppercase backdrop-blur-sm",
@@ -275,7 +276,7 @@ function Stamp({
         )}
       >
         {label}
-      </motion.div>
+      </m.div>
     </div>
   );
 }

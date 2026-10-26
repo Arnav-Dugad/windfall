@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import { Switch } from "radix-ui";
 import { useId } from "react";
 import { formatCompactUSD } from "@shared/money";
@@ -60,7 +60,7 @@ export default function Leaderboard() {
       ) : (
         <ol className="mt-8 space-y-1.5" aria-label="Patrons ranked by Generosity Index">
           {q.data.entries.map((e, i) => (
-            <motion.li
+            <m.li
               key={e.id}
               layout
               initial={{ opacity: 0, y: 12 }}
@@ -85,7 +85,7 @@ export default function Leaderboard() {
                 <p className="display text-[1.7rem] leading-none num">{e.index}</p>
                 <p className="text-[11px] tracking-[0.08em] text-ink-3 uppercase">index</p>
               </div>
-            </motion.li>
+            </m.li>
           ))}
         </ol>
       )}

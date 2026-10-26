@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, Download, Flame, HeartHandshake, Share2, Sparkles, Trophy } from "lucide-react";
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { CATEGORY_LABELS } from "@shared/domain";
@@ -67,7 +67,7 @@ export default function Impact() {
       </section>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[1.4fr_1fr]">
-        <motion.section {...reveal} className="card-surface p-5 sm:p-7" aria-labelledby="over-time">
+        <m.section {...reveal} className="card-surface p-5 sm:p-7" aria-labelledby="over-time">
           <h2 id="over-time" className="display text-[1.7rem]">
             Giving over time
           </h2>
@@ -75,9 +75,9 @@ export default function Impact() {
           <div className="mt-6">
             <GivingChart series={d.series} />
           </div>
-        </motion.section>
+        </m.section>
 
-        <motion.section {...reveal} className="card-surface p-5 sm:p-7" aria-labelledby="by-cat">
+        <m.section {...reveal} className="card-surface p-5 sm:p-7" aria-labelledby="by-cat">
           <h2 id="by-cat" className="display text-[1.7rem]">
             What you’ve cleared
           </h2>
@@ -94,7 +94,7 @@ export default function Impact() {
                       <span className="num text-ink-2">{formatUSD(c.totalCents)}</span>
                     </div>
                     <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-line">
-                      <motion.div
+                      <m.div
                         className="h-full origin-left rounded-full bg-chart"
                         initial={{ scaleX: 0 }}
                         whileInView={{ scaleX: c.totalCents / max }}
@@ -106,10 +106,10 @@ export default function Impact() {
                 );
               })}
           </ul>
-        </motion.section>
+        </m.section>
       </div>
 
-      <motion.section {...reveal} className="card-surface mt-6 p-5 sm:p-7" aria-labelledby="where">
+      <m.section {...reveal} className="card-surface mt-6 p-5 sm:p-7" aria-labelledby="where">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h2 id="where" className="display text-[1.7rem]">
             Where your money went
@@ -131,9 +131,9 @@ export default function Impact() {
             ))}
           </ol>
         </div>
-      </motion.section>
+      </m.section>
 
-      <motion.section {...reveal} className="mt-12" aria-labelledby="recent">
+      <m.section {...reveal} className="mt-12" aria-labelledby="recent">
         <h2 id="recent" className="display text-[1.7rem]">
           Recent gifts
         </h2>
@@ -158,7 +158,7 @@ export default function Impact() {
             </li>
           ))}
         </ul>
-      </motion.section>
+      </m.section>
 
       <ShareSheet open={sharing} onOpenChange={setSharing} impact={d} name={name} />
     </main>

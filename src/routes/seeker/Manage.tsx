@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, EyeOff, FileCheck2, MessageCircleHeart, Newspaper, Pause, Play, ShieldCheck, XCircle } from "lucide-react";
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, m } from "motion/react";
 import { Switch } from "radix-ui";
 import { useEffect, useId, useRef, useState } from "react";
 import { Link, useParams } from "react-router";
@@ -118,7 +118,7 @@ export default function ManageRequest() {
               <ul className="mt-4 divide-y divide-line rounded-tile bg-surface hairline">
                 <AnimatePresence initial={false}>
                   {gifts.map((g) => (
-                    <motion.li key={g.id} layout initial={{ opacity: 0, backgroundColor: "var(--wf-gold-soft)" }} animate={{ opacity: 1, backgroundColor: "rgba(0,0,0,0)" }} transition={{ duration: 1.2 }} className="flex items-center gap-4 px-4 py-3.5 sm:px-5">
+                    <m.li key={g.id} layout initial={{ opacity: 0, backgroundColor: "var(--wf-gold-soft)" }} animate={{ opacity: 1, backgroundColor: "rgba(0,0,0,0)" }} transition={{ duration: 1.2 }} className="flex items-center gap-4 px-4 py-3.5 sm:px-5">
                       <Avatar seed={g.avatarSeed} className="size-9 shrink-0" monogram={false} />
                       <div className="min-w-0 flex-1">
                         <p className="text-[15px] font-medium">{g.from ?? "Anonymous Patron"}</p>
@@ -128,7 +128,7 @@ export default function ManageRequest() {
                         </p>
                       </div>
                       <span className="num text-[15px] font-medium">{formatUSD(g.amountCents)}</span>
-                    </motion.li>
+                    </m.li>
                   ))}
                 </AnimatePresence>
               </ul>
@@ -238,7 +238,7 @@ function PostUpdate({ requestId, hasGifts }: { requestId: string; hasGifts: bool
             onClick={() => setKind(k)}
             className={cn("relative h-9 rounded-full text-[13.5px] font-medium ring-focus", kind === k ? "text-ink" : "text-ink-2")}
           >
-            {kind === k && <motion.span layoutId={`${id}-pill`} transition={spring.snappy} className="absolute inset-0 rounded-full bg-surface shadow-sm" />}
+            {kind === k && <m.span layoutId={`${id}-pill`} transition={spring.snappy} className="absolute inset-0 rounded-full bg-surface shadow-sm" />}
             <span className="relative">{k === "thanks" ? "Thank-you note" : "Progress update"}</span>
           </button>
         ))}

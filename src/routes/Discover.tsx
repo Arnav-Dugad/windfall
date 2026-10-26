@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowUp, Bookmark, HandCoins, RotateCcw, SlidersHorizontal, X } from "lucide-react";
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
 import { CATEGORIES, CATEGORY_LABELS, type RequestCard } from "@shared/domain";
@@ -164,7 +164,7 @@ export default function Discover() {
                   active ? "text-on-ink" : "text-ink-2 hover:text-ink",
                 )}
               >
-                {active && <motion.span layoutId="cat-pill" transition={spring.snappy} className="absolute inset-0 rounded-full bg-ink" />}
+                {active && <m.span layoutId="cat-pill" transition={spring.snappy} className="absolute inset-0 rounded-full bg-ink" />}
                 {!active && <span className="absolute inset-0 rounded-full shadow-[inset_0_0_0_1px_var(--wf-line)]" />}
                 <span className="relative">{c ? CATEGORY_LABELS[c] : "Everyone"}</span>
               </button>
@@ -181,14 +181,14 @@ export default function Discover() {
       <div className="grid flex-1 items-start gap-10 pt-2 pb-6 lg:grid-cols-[1fr_minmax(0,420px)_1fr] lg:pt-6">
         <aside className="hidden lg:block" aria-hidden>
           {next && (
-            <motion.div key={next.id} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.5 }} className="sticky top-40 max-w-60 pt-10">
+            <m.div key={next.id} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.5 }} className="sticky top-40 max-w-60 pt-10">
               <p className="eyebrow">Up next</p>
               <p className="mt-3 text-[15px] font-medium">
                 {next.firstName} · <span className="font-normal text-ink-2">{next.city}</span>
               </p>
               <p className="display mt-2 text-[1.75rem] leading-tight text-balance">“{next.headline}”</p>
               <p className="mt-4 text-[14px] text-ink-2 num">{formatUSD(remainingCents(next.goalCents, next.fundedCents))} would clear it.</p>
-            </motion.div>
+            </m.div>
           )}
         </aside>
 

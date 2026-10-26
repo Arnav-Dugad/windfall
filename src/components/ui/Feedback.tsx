@@ -1,5 +1,5 @@
 import { AlertCircle, RotateCcw } from "lucide-react";
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import type { ReactNode } from "react";
 import { ease } from "@/design/motion";
 import { cn } from "@/lib/utils";
@@ -24,7 +24,7 @@ export function EmptyState({
   className?: string;
 }) {
   return (
-    <motion.div
+    <m.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.6, ease: ease.outExpo }}
@@ -34,7 +34,7 @@ export function EmptyState({
       <h2 className="display mt-6 text-display-sm text-balance">{title}</h2>
       {body && <p className="mt-3 text-[15px] leading-relaxed text-ink-2 text-pretty">{body}</p>}
       {action && <div className="mt-7">{action}</div>}
-    </motion.div>
+    </m.div>
   );
 }
 

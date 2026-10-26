@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowRight, FlaskConical } from "lucide-react";
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, m } from "motion/react";
 import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import type { Role } from "@shared/domain";
@@ -50,7 +50,7 @@ export default function Login() {
       </header>
 
       <main className="mx-auto grid w-full max-w-6xl flex-1 items-center gap-12 px-4 pt-6 pb-16 sm:px-6 lg:grid-cols-[1.1fr_1fr] lg:gap-20">
-        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, ease: ease.outExpo }}>
+        <m.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, ease: ease.outExpo }}>
           <DemoBadge />
           <h1 className="display mt-6 text-display-lg text-balance">
             Step inside.
@@ -61,9 +61,9 @@ export default function Login() {
             Windfall is a demo. There are no passwords and no real money — choose a persona and explore instantly. Gifts move through an
             internal ledger, never a bank.
           </p>
-        </motion.div>
+        </m.div>
 
-        <motion.section
+        <m.section
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.08, ease: ease.outExpo }}
@@ -79,7 +79,7 @@ export default function Login() {
                 onClick={() => setRole(r)}
                 className={cn("relative h-12 rounded-[18px] text-[15px] font-medium transition-colors ring-focus", role === r ? "text-ink" : "text-ink-2 hover:text-ink")}
               >
-                {role === r && <motion.span layoutId="role-pill" transition={spring.snappy} className="absolute inset-0 rounded-[18px] bg-surface shadow-sm" />}
+                {role === r && <m.span layoutId="role-pill" transition={spring.snappy} className="absolute inset-0 rounded-[18px] bg-surface shadow-sm" />}
                 <span className="relative">{r === "patron" ? "I’m a Patron" : "I’m a Seeker"}</span>
               </button>
             ))}
@@ -100,7 +100,7 @@ export default function Login() {
               <ErrorState error={personas.error} onRetry={() => personas.refetch()} />
             ) : (
               <AnimatePresence mode="popLayout" initial={false}>
-                <motion.ul
+                <m.ul
                   key={role}
                   initial={{ opacity: 0, x: role === "seeker" ? 24 : -24 }}
                   animate={{ opacity: 1, x: 0 }}
@@ -131,7 +131,7 @@ export default function Login() {
                       </li>
                     );
                   })}
-                </motion.ul>
+                </m.ul>
               </AnimatePresence>
             )}
           </div>
@@ -143,7 +143,7 @@ export default function Login() {
           <p className="flex items-center gap-2 border-t border-line px-3 pt-4 pb-2 text-[12.5px] text-ink-3">
             <FlaskConical className="size-3.5" aria-hidden /> All personas, stories and gifts are fictional.
           </p>
-        </motion.section>
+        </m.section>
       </main>
     </div>
   );

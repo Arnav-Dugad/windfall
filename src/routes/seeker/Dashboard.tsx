@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, Plus } from "lucide-react";
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import { Link } from "react-router";
 import type { RequestCard } from "@shared/domain";
 import { formatUSD, formatUSDWhole, progress } from "@shared/money";
@@ -57,9 +57,9 @@ export default function SeekerDashboard() {
       ) : (
         <ul className="mt-10 space-y-4">
           {q.data.requests.map((r, i) => (
-            <motion.li key={r.id} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06, duration: 0.6, ease: ease.outExpo }}>
+            <m.li key={r.id} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06, duration: 0.6, ease: ease.outExpo }}>
               <RequestRow r={r} />
-            </motion.li>
+            </m.li>
           ))}
         </ul>
       )}

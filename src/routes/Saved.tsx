@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { BookmarkX } from "lucide-react";
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, m } from "motion/react";
 import { Link } from "react-router";
 import { CATEGORY_LABELS } from "@shared/domain";
 import { formatUSD, progress, remainingCents } from "@shared/money";
@@ -56,7 +56,7 @@ export default function Saved() {
         <ul className="mt-10 grid gap-4 sm:grid-cols-2">
           <AnimatePresence initial={false}>
             {q.data.saved.map((s) => (
-              <motion.li
+              <m.li
                 key={s.id}
                 layout
                 initial={{ opacity: 0, scale: 0.97 }}
@@ -84,7 +84,7 @@ export default function Saved() {
                 <IconButton label={`Remove ${s.firstName} from Maybe later`} size="sm" tone="plain" className="relative z-10 -mt-1 -mr-1" onClick={() => remove.mutate(s.id)}>
                   <BookmarkX className="size-4" aria-hidden />
                 </IconButton>
-              </motion.li>
+              </m.li>
             ))}
           </AnimatePresence>
         </ul>

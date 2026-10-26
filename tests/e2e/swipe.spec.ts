@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
 const deck = (page: Page) => page.getByRole("region", { name: "Story deck" });
-const topName = (page: Page) => deck(page).locator("article h3").first();
+const topName = (page: Page) => deck(page).locator("article h2").first();
 
 async function signInAsPatron(page: Page, name = "Eleanor V.") {
   await page.goto("/login");

@@ -1,4 +1,4 @@
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, m } from "motion/react";
 import { useState } from "react";
 import { formatUSD } from "@shared/money";
 import { WORLD_DOTS } from "@/data/world-dots";
@@ -42,7 +42,7 @@ export function ImpactMap({ places }: { places: Place[] }) {
               className="cursor-pointer outline-none"
             >
               <circle cx={x} cy={y} r={r * 2.2} fill="var(--wf-chart)" opacity={0.16} className="motion-safe:animate-breathe" style={{ transformOrigin: `${x}px ${y}px`, animationDelay: `${i * 0.3}s` }} />
-              <motion.circle
+              <m.circle
                 cx={x}
                 cy={y}
                 r={r}
@@ -62,7 +62,7 @@ export function ImpactMap({ places }: { places: Place[] }) {
       </svg>
       <AnimatePresence>
         {active && (
-          <motion.div
+          <m.div
             key={active.city}
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
@@ -81,7 +81,7 @@ export function ImpactMap({ places }: { places: Place[] }) {
             <div className="num opacity-80">
               {formatUSD(active.totalCents)} · {active.people.join(", ")}
             </div>
-          </motion.div>
+          </m.div>
         )}
       </AnimatePresence>
     </div>

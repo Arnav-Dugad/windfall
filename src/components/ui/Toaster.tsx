@@ -1,4 +1,4 @@
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, m } from "motion/react";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { spring } from "@/design/motion";
 import { subscribeAnnouncements } from "@/lib/announce";
@@ -19,7 +19,7 @@ export function Toaster() {
     <div className="pointer-events-none fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+5.5rem)] z-[60] flex flex-col items-center gap-2 px-4 md:bottom-8">
       <AnimatePresence initial={false}>
         {list.map((t) => (
-          <motion.div
+          <m.div
             key={t.id}
             layout
             initial={{ opacity: 0, y: 16, scale: 0.96 }}
@@ -43,7 +43,7 @@ export function Toaster() {
             ) : (
               <span className="w-2" />
             )}
-          </motion.div>
+          </m.div>
         ))}
       </AnimatePresence>
     </div>

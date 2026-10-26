@@ -1,5 +1,5 @@
 import { X } from "lucide-react";
-import { AnimatePresence, motion, useDragControls } from "motion/react";
+import { AnimatePresence, m, useDragControls } from "motion/react";
 import { Dialog } from "radix-ui";
 import type { ReactNode } from "react";
 import { spring } from "@/design/motion";
@@ -37,7 +37,7 @@ export function Sheet({
         {open && (
           <Dialog.Portal forceMount>
             <Dialog.Overlay asChild forceMount>
-              <motion.div
+              <m.div
                 className="fixed inset-0 z-50 bg-scrim"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -47,7 +47,7 @@ export function Sheet({
             </Dialog.Overlay>
             <div className="pointer-events-none fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-6">
               <Dialog.Content asChild forceMount {...(description ? {} : { "aria-describedby": undefined })}>
-                <motion.div
+                <m.div
                   className={cn(
                     "pointer-events-auto relative w-full max-w-lg bg-surface shadow-float outline-none",
                     "rounded-t-sheet pb-[max(env(safe-area-inset-bottom),1.25rem)] sm:rounded-sheet sm:pb-6",
@@ -92,7 +92,7 @@ export function Sheet({
                     </Dialog.Close>
                   </div>
                   <div className="px-6 pt-5">{children}</div>
-                </motion.div>
+                </m.div>
               </Dialog.Content>
             </div>
           </Dialog.Portal>
