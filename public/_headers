@@ -1,6 +1,9 @@
+# Fonts have stable (un-hashed) URLs: cache for a week, revalidate after.
+# Note: no immutable rule for /assets/* — a missing hashed file falls back to index.html (SPA mode),
+# and that fallback must never be cached as if it were the script.
 /fonts/*
-  Cache-Control: public, max-age=31536000, immutable
+  Cache-Control: public, max-age=604800
   Access-Control-Allow-Origin: *
 
-/assets/*
-  Cache-Control: public, max-age=31536000, immutable
+/grain.png
+  Cache-Control: public, max-age=604800

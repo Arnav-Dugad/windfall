@@ -84,7 +84,7 @@ function Hero() {
   const enter = !shownShell;
   return (
     <section className="relative mx-auto grid max-w-6xl items-center gap-14 px-4 pt-10 pb-24 sm:px-6 lg:grid-cols-[1.15fr_1fr] lg:pt-20 lg:pb-32">
-      <div aria-hidden className="pointer-events-none absolute -top-40 right-0 -z-10 size-[640px] rounded-full opacity-60 blur-3xl" style={{ background: "radial-gradient(closest-side, var(--wf-gold-soft), transparent)" }} />
+      <div aria-hidden className="pointer-events-none absolute -top-40 right-0 -z-10 size-[640px] rounded-full opacity-60" style={{ background: "radial-gradient(closest-side, var(--wf-gold-soft), transparent)" }} />
       <div>
         <m.p initial={enter && { opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, ease: ease.outExpo }} className="eyebrow">
           Person-to-person generosity · a demo
@@ -410,7 +410,7 @@ function Trust() {
 function FinalCta() {
   return (
     <section className="relative overflow-hidden py-28 sm:py-40">
-      <div aria-hidden className="pointer-events-none absolute top-1/2 left-1/2 -z-10 size-[720px] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-70 blur-3xl" style={{ background: "radial-gradient(closest-side, var(--wf-gold-soft), transparent)" }} />
+      <div aria-hidden className="pointer-events-none absolute top-1/2 left-1/2 -z-10 size-[720px] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-70" style={{ background: "radial-gradient(closest-side, var(--wf-gold-soft), transparent)" }} />
       <div className="mx-auto max-w-3xl px-4 text-center sm:px-6">
         <m.div {...reveal} className="flex justify-center">
           <Mark className="size-12" />
