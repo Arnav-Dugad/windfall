@@ -1,0 +1,8 @@
+{
+  "extends": "./tsconfig.worker.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.test.tsbuildinfo",
+    "types": ["./worker-configuration.d.ts", "node"]
+  },
+  "include": ["tests", "shared", "worker", "vitest.config.ts", "playwright.config.ts", "scripts"]
+}
