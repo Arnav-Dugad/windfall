@@ -1,0 +1,157 @@
+@import "tailwindcss";
+@import "./design/tokens.css";
+
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+@custom-variant pointer-fine (@media (hover: hover) and (pointer: fine));
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    scroll-behavior: smooth;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+  }
+  body {
+    background: var(--wf-canvas);
+    color: var(--wf-ink);
+    font-family: var(--font-sans);
+    font-feature-settings: "ss01", "cv11";
+    min-height: 100dvh;
+    overflow-x: clip;
+  }
+  ::selection {
+    background: var(--wf-gold-soft);
+    color: var(--wf-ink);
+  }
+  :focus-visible {
+    outline: 2px solid var(--wf-gold);
+    outline-offset: 3px;
+    border-radius: 6px;
+  }
+  button,
+  [role="button"] {
+    cursor: pointer;
+  }
+  button:disabled {
+    cursor: not-allowed;
+  }
+  input,
+  textarea,
+  select {
+    font: inherit;
+  }
+}
+
+@layer components {
+  /* Subtle film grain over everything; static so it costs nothing per frame. */
+  .grain::after {
+    content: "";
+    position: fixed;
+    inset: -50%;
+    z-index: 100;
+    pointer-events: none;
+    opacity: var(--wf-grain-opacity);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.9 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  .eyebrow {
+    font-size: var(--text-eyebrow);
+    letter-spacing: var(--text-eyebrow--letter-spacing);
+    text-transform: uppercase;
+    font-weight: 500;
+    color: var(--wf-ink-3);
+  }
+
+  .hairline {
+    box-shadow: var(--wf-shadow-hair);
+  }
+
+  .num {
+    font-variant-numeric: tabular-nums lining-nums;
+    font-feature-settings: "tnum", "lnum";
+  }
+
+  .display {
+    font-family: var(--font-display);
+    font-weight: 400;
+  }
+
+  .text-balance {
+    text-wrap: balance;
+  }
+  .text-pretty {
+    text-wrap: pretty;
+  }
+
+  .card-surface {
+    background: var(--wf-surface);
+    border-radius: var(--radius-card);
+    box-shadow: var(--wf-shadow-card);
+  }
+
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Focus ring that sits outside rounded cards without clipping. */
+  .ring-focus:focus-visible {
+    outline: none;
+    box-shadow:
+      0 0 0 2px var(--wf-canvas),
+      0 0 0 4px var(--wf-gold);
+  }
+
+  .gold-sheen {
+    background: linear-gradient(
+      100deg,
+      var(--wf-gold-ink) 0%,
+      var(--wf-gold) 45%,
+      var(--wf-gold-ink) 90%
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .skeleton {
+    position: relative;
+    overflow: hidden;
+    background: var(--wf-surface-2);
+  }
+  .skeleton::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.5), transparent);
+    animation: var(--animate-shimmer);
+  }
+  [data-theme="dark"] .skeleton::after {
+    background: linear-gradient(90deg, transparent, rgb(255 248 235 / 0.06), transparent);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .skeleton::after {
+      animation: none;
+    }
+  }
+}
+
+@keyframes menu-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}

@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Windfall — Swipe to clear someone's debt</title>
+    <meta
+      name="description"
+      content="Windfall pairs Patrons with real-feeling stories of medical debt, student loans, rent and more. Swipe right to give, up to clear it. A demo — no real money moves."
+    />
+    <meta name="theme-color" content="#faf7f2" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#12110f" media="(prefers-color-scheme: dark)" />
+    <link rel="icon" href="/favicon.ico" sizes="32x32" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Windfall" />
+    <meta property="og:title" content="Windfall — Swipe to clear someone's debt" />
+    <meta
+      property="og:description"
+      content="Swipe right to give. Swipe up to clear it. A quietly luxurious demo of person-to-person generosity."
+    />
+    <meta property="og:image" content="/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content="/og.png" />
+
+    <script>
+      // Apply the saved/system theme before first paint to avoid a flash.
+      (function () {
+        try {
+          var t = localStorage.getItem("wf-theme");
+          if (t !== "light" && t !== "dark") t = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+          document.documentElement.dataset.theme = t;
+        } catch (e) {
+          document.documentElement.dataset.theme = "light";
+        }
+      })();
+    </script>
+  </head>
+  <body class="grain">
+    <div id="root"></div>
+    <noscript>Windfall needs JavaScript to run its swipe deck.</noscript>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
