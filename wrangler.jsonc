@@ -1,0 +1,42 @@
+/**
+ * Windfall — one Worker serving the Hono API (/api/*) and the React SPA via static assets.
+ * https://developers.cloudflare.com/workers/wrangler/configuration/
+ */
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "windfall",
+	"main": "worker/index.ts",
+	"compatibility_date": "2026-10-23",
+	"compatibility_flags": ["nodejs_compat"],
+	"assets": {
+		"not_found_handling": "single-page-application",
+		"run_worker_first": ["/api/*"]
+	},
+	"observability": {
+		"enabled": true
+	},
+	"upload_source_maps": true,
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "windfall-db",
+			"database_id": "56cb4cbd-0f20-4fac-b4a8-c6982e4d04e5",
+			"migrations_dir": "migrations"
+		}
+	],
+	"r2_buckets": [
+		{
+			"binding": "MEDIA",
+			"bucket_name": "windfall-media"
+		}
+	],
+	"ratelimits": [
+		{ "name": "API_LIMITER", "namespace_id": "4801", "simple": { "limit": 120, "period": 60 } },
+		{ "name": "WRITE_LIMITER", "namespace_id": "4802", "simple": { "limit": 30, "period": 60 } }
+	],
+	"vars": {
+		// "demo" = internal ledger only (no money moves). "stripe_test" = Stripe Connect test mode (see worker/lib/payments.ts).
+		"PAYMENTS_MODE": "demo"
+	}
+	// Secrets (wrangler secret put): SESSION_SECRET (required), STRIPE_SECRET_KEY (only for stripe_test)
+}
