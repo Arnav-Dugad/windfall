@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Navigate, useNavigate, useSearchParams } from "react-router";
 import type { Role } from "@shared/domain";
 import { Avatar } from "@/components/ui/Avatar";
+import { Backdrop } from "@/components/ui/Backdrop";
 import { Logo } from "@/components/ui/Brand";
 import { Button } from "@/components/ui/Button";
 import { ease, spring } from "@/design/motion";
@@ -13,7 +14,7 @@ import { useDocumentTitle, useMe } from "@/lib/hooks";
 import { homeFor } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 
-/** First-run choice for people who signed in with Google (or any account without a Windfall profile). */
+/** First-run choice for people who signed in with Google (or any account without a Give profile). */
 export default function Welcome() {
   useDocumentTitle("Welcome");
   const me = useMe();
@@ -39,7 +40,8 @@ export default function Welcome() {
   ];
 
   return (
-    <div className="flex min-h-dvh flex-col">
+    <div className="relative isolate flex min-h-dvh flex-col overflow-hidden">
+      <Backdrop />
       <header className="mx-auto flex h-14 w-full max-w-6xl items-center px-4 sm:px-6">
         <Logo />
       </header>
@@ -47,7 +49,7 @@ export default function Welcome() {
         <m.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, ease: ease.outExpo }} className="text-center">
           <Avatar seed={fb?.uid ?? "you"} name={name || "You"} photoUrl={fb?.photoURL} className="mx-auto size-20" />
           <h1 className="display mt-5 text-display-md">Welcome{name ? `, ${name}` : ""}.</h1>
-          <p className="mt-2 text-[16px] text-ink-2">How will you use Windfall? You can’t change this later.</p>
+          <p className="mt-2 text-[16px] text-ink-2">How will you use Give? You can’t change this later.</p>
         </m.div>
         <div className="mt-8 grid gap-3" role="radiogroup" aria-label="Role">
           {choices.map((c) => (

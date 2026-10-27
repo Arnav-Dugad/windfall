@@ -1,11 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, EyeOff, FileCheck2, MessageCircleHeart, Newspaper, Pause, Play, ShieldCheck, XCircle } from "lucide-react";
+import { ArrowLeft, BadgeCheck, CalendarDays, EyeOff, FileCheck2, HeartHandshake, MessageCircleHeart, Newspaper, Pause, Play, ShieldCheck, XCircle } from "lucide-react";
 import { AnimatePresence, m } from "motion/react";
 import { Switch } from "radix-ui";
 import { useEffect, useId, useRef, useState } from "react";
 import { Link, useParams } from "react-router";
+import type { SeekerUpdate, Verification } from "@shared/domain";
 import { formatUSD, formatUSDWhole, progress, remainingCents } from "@shared/money";
 import { postUpdateSchema } from "@shared/schemas";
+import { MediaPlayer } from "@/components/media/MediaPlayer";
+import { Recorder } from "@/components/media/Recorder";
 import { Avatar } from "@/components/ui/Avatar";
 import { Badge, VerificationBadge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -14,10 +17,10 @@ import { Progress } from "@/components/ui/Progress";
 import { Sheet } from "@/components/ui/Sheet";
 import { Ticker } from "@/components/ui/Ticker";
 import { toast } from "@/lib/toast";
-import { spring } from "@/design/motion";
+import { ease, spring } from "@/design/motion";
 import { announce } from "@/lib/announce";
 import { api } from "@/lib/api";
-import { useDocumentTitle } from "@/lib/hooks";
+import { useDocumentTitle, useNow } from "@/lib/hooks";
 import { cn, shortDate, timeAgo } from "@/lib/utils";
 import { FileDrop } from "./FileDrop";
 import { STATUS_BADGE } from "./status";
@@ -27,6 +30,7 @@ export default function ManageRequest() {
   const qc = useQueryClient();
   const q = useQuery({ queryKey: ["my-request", id], queryFn: () => api.myRequest(id!), refetchInterval: 4000 });
   useDocumentTitle("Manage request");
+  const now = useNow(60_000);
 
   // Celebrate gifts that arrive while the page is open.
   const lastGift = useRef<string | null>(null);
@@ -63,6 +67,9 @@ export default function ManageRequest() {
   const pct = progress(r.goalCents, r.fundedCents);
   const s = STATUS_BADGE[r.status];
   const editable = r.status === "active" || r.status === "paused";
+  // Anonymous gifts can't be told apart, so each counts as its own giver.
+  const givers = new Set(gifts.map((g) => g.from ?? g.id)).size;
+  const daysLive = Math.max(1, Math.ceil((now - r.createdAt) / 86_400_000));
 
   return (
     <main className="mx-auto max-w-5xl px-4 pt-6 pb-16 sm:px-6 sm:pt-10">
@@ -87,24 +94,39 @@ export default function ManageRequest() {
         </div>
       </header>
 
-      <div className="mt-10 grid gap-6 lg:grid-cols-[1.35fr_1fr]">
+      {/* Widget grid: the four numbers a Seeker checks most, at a glance. */}
+      <section aria-label="At a glance" className="mt-10 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+        <Widget i={0} className="col-span-2 lg:row-span-1">
+          <div className="flex items-center gap-2">
+            <span className="relative flex size-2">
+              {r.status === "active" && <span className="absolute inline-flex size-full rounded-full bg-positive opacity-60 motion-safe:animate-ping" />}
+              <span className={cn("relative inline-flex size-2 rounded-full", r.status === "active" ? "bg-positive" : "bg-ink-3")} />
+            </span>
+            <p className="eyebrow">{r.status === "active" ? "Live · raised" : s.label}</p>
+          </div>
+          <p className="display mt-3 text-[2.9rem] leading-none sm:text-[3.4rem]">
+            <Ticker value={r.fundedCents} format={formatUSDWhole} />
+          </p>
+          <p className="mt-2 text-[14px] text-ink-2 num">
+            of {formatUSD(r.goalCents)} · {formatUSD(remainingCents(r.goalCents, r.fundedCents))} to go
+          </p>
+          <Progress className="mt-4" value={pct} size="lg" accent={r.accent} />
+        </Widget>
+        <Widget i={1} icon={HeartHandshake} label="Givers" tint="text-accent">
+          <p className="display text-[2.6rem] leading-none num">{givers}</p>
+          <p className="mt-1.5 text-[13px] text-ink-3 num">
+            {gifts.length} {gifts.length === 1 ? "gift" : "gifts"}
+          </p>
+        </Widget>
+        <Widget i={2} icon={CalendarDays} label="Days live" tint="text-[#ff9f0a]">
+          <p className="display text-[2.6rem] leading-none num">{daysLive}</p>
+          <p className="mt-1.5 text-[13px] text-ink-3">since {shortDate(r.createdAt)}</p>
+        </Widget>
+      </section>
+      <VerificationWidget status={r.verification} />
+
+      <div className="mt-6 grid gap-6 lg:grid-cols-[1.35fr_1fr]">
         <div className="space-y-6">
-          <section className="card-surface p-6 sm:p-7" aria-label="Live funding">
-            <div className="flex items-center gap-2">
-              <span className="relative flex size-2">
-                {r.status === "active" && <span className="absolute inline-flex size-full rounded-full bg-positive opacity-60 motion-safe:animate-ping" />}
-                <span className={cn("relative inline-flex size-2 rounded-full", r.status === "active" ? "bg-positive" : "bg-ink-3")} />
-              </span>
-              <p className="eyebrow">{r.status === "active" ? "Live" : s.label}</p>
-            </div>
-            <p className="display mt-4 text-[3.4rem] leading-none">
-              <Ticker value={r.fundedCents} format={formatUSDWhole} />
-            </p>
-            <p className="mt-2 text-[14.5px] text-ink-2 num">
-              raised of {formatUSD(r.goalCents)} · {formatUSD(remainingCents(r.goalCents, r.fundedCents))} to go
-            </p>
-            <Progress className="mt-5" value={pct} size="lg" />
-          </section>
 
           <section aria-labelledby="gifts-h">
             <h2 id="gifts-h" className="display text-[1.7rem]">
@@ -138,13 +160,8 @@ export default function ManageRequest() {
 
         <div className="space-y-6">
           {editable && <PostUpdate requestId={r.id} hasGifts={gifts.length > 0} />}
+          {editable && <Recorder requestId={r.id} />}
           {r.verification === "unverified" && editable && <VerifyPanel requestId={r.id} />}
-          {r.verification === "pending" && (
-            <div className="flex gap-3 rounded-tile bg-accent-soft p-5 text-[14px] text-accent-ink">
-              <FileCheck2 className="size-5 shrink-0" aria-hidden />
-              <p>Your document is being reviewed. This demo simulates review — it’ll show “Verified” in about 20 seconds.</p>
-            </div>
-          )}
 
           <section className="card-surface p-5 sm:p-6" aria-labelledby="dignity-h">
             <h2 id="dignity-h" className="flex items-center gap-2 text-[15px] font-medium">
@@ -197,6 +214,7 @@ export default function ManageRequest() {
                       {u.kind === "thanks" ? "Thank-you note" : "Update"} · {shortDate(u.createdAt)}
                     </p>
                     <p className="mt-1.5 text-[14.5px] leading-relaxed">{u.body}</p>
+                    {mediaIdOf(u) && <MediaPlayer requestId={r.id} mediaId={mediaIdOf(u)!} accent={r.accent} />}
                   </li>
                 ))}
               </ol>
@@ -205,6 +223,63 @@ export default function ManageRequest() {
         </div>
       </div>
     </main>
+  );
+}
+
+const mediaIdOf = (u: SeekerUpdate) => (u as SeekerUpdate & { mediaId?: string | null }).mediaId ?? null;
+
+function Widget({
+  i,
+  icon: Icon,
+  label,
+  tint,
+  className,
+  children,
+}: {
+  i: number;
+  icon?: typeof EyeOff;
+  label?: string;
+  tint?: string;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <m.div
+      initial={{ opacity: 0, y: 12, scale: 0.98 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ delay: i * 0.06, duration: 0.6, ease: ease.outExpo }}
+      className={cn("card-surface squircle flex flex-col justify-between rounded-[26px] p-5 sm:p-6", className)}
+    >
+      {label && Icon && (
+        <p className="mb-4 flex items-center gap-1.5 text-[13px] font-semibold text-ink-2">
+          <Icon className={cn("size-4", tint)} aria-hidden /> {label}
+        </p>
+      )}
+      <div>{children}</div>
+    </m.div>
+  );
+}
+
+const VERIFY: Record<Verification, { title: string; body: string; tone: string }> = {
+  verified: { title: "Verified", body: "Your statements were reviewed. Verified stories are shown to more Patrons.", tone: "bg-positive-soft text-positive-ink" },
+  pending: { title: "In review", body: "Your document is being reviewed. This demo simulates review — it’ll show “Verified” in about 20 seconds.", tone: "bg-accent-soft text-accent-ink" },
+  unverified: { title: "Not verified yet", body: "Upload a statement below to reach Patrons who filter for verified stories.", tone: "bg-fill text-ink-2" },
+};
+
+function VerificationWidget({ status }: { status: Verification }) {
+  const v = VERIFY[status];
+  return (
+    <m.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.18, duration: 0.6, ease: ease.outExpo }}
+      className={cn("squircle mt-3 flex items-center gap-3 rounded-[22px] px-5 py-4 sm:mt-4", v.tone)}
+    >
+      {status === "verified" ? <BadgeCheck className="size-5 shrink-0" aria-hidden /> : <FileCheck2 className="size-5 shrink-0" aria-hidden />}
+      <p className="text-[14px]">
+        <span className="font-semibold">{v.title}.</span> {v.body}
+      </p>
+    </m.div>
   );
 }
 

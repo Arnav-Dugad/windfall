@@ -2,18 +2,20 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, ArrowUp, BadgeCheck, ChevronRight, EyeOff, HandCoins, Landmark, Lock, PauseCircle, ShieldCheck, Sparkles, Undo2, X } from "lucide-react";
 import { m, useScroll, useTransform, type MotionValue } from "motion/react";
 import { useRef, useState, type ReactNode } from "react";
-import { Link } from "react-router";
+import { Link, useLocation } from "react-router";
 import { CATEGORY_LABELS, type RequestCard } from "@shared/domain";
 import { formatCompactUSD, formatUSD, formatUSDWhole, remainingCents } from "@shared/money";
 import { SwipeDeck, type SwipeDeckHandle, type SwipeDir } from "@/components/deck/SwipeDeck";
 import { fxCoinBurst, fxConfetti } from "@/components/effects";
 import { Avatar } from "@/components/ui/Avatar";
+import { Backdrop } from "@/components/ui/Backdrop";
 import { DemoBadge } from "@/components/ui/Badge";
 import { Logo, Mark, ThemeToggle } from "@/components/ui/Brand";
 import { ButtonLink, IconButton, Magnetic } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Feedback";
+import { WeightHeading } from "@/components/ui/LargeTitle";
 import { Ticker } from "@/components/ui/Ticker";
-import { ease, reveal } from "@/design/motion";
+import { ease, reveal, spring } from "@/design/motion";
 import { announce } from "@/lib/announce";
 import { publicApi } from "@/lib/public-api";
 import { useDocumentTitle, useMediaQuery, useMe } from "@/lib/hooks";
@@ -89,7 +91,9 @@ function Hero() {
   const enter = !shownShell;
   return (
     <section className="relative mx-auto flex max-w-6xl flex-col items-center px-4 pt-14 pb-20 text-center sm:px-6 sm:pt-20 lg:pb-28">
-      <div aria-hidden className="pointer-events-none absolute inset-x-0 -top-24 -z-10 mx-auto h-[620px] max-w-4xl opacity-60" style={{ background: "radial-gradient(closest-side, color-mix(in srgb, var(--wf-accent) 22%, transparent), transparent)" }} />
+      {/* Time-of-day ambient light behind the hero (CSS only — no work on the critical path). */}
+      <Backdrop intensity={0.7} className="-top-14 left-1/2 w-screen -translate-x-1/2 [mask-image:linear-gradient(to_bottom,black_55%,transparent)]" />
+      <div aria-hidden className="pointer-events-none absolute inset-x-0 -top-24 -z-10 mx-auto h-[620px] max-w-4xl opacity-50" style={{ background: "radial-gradient(closest-side, color-mix(in srgb, var(--wf-accent) 22%, transparent), transparent)" }} />
       <m.p
         initial={enter && { opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
@@ -171,7 +175,7 @@ function Word({ children, i }: { children: ReactNode; i: number }) {
 function FloatingStats() {
   const stats = useQuery({ queryKey: ["stats"], queryFn: publicApi.stats, refetchInterval: 15_000 });
   const chips: { label: string; value?: number; format: (n: number) => string; className: string; delay: number }[] = [
-    { label: "Given on Windfall", value: stats.data?.totalCents, format: formatUSDWhole, className: "-left-64 top-16", delay: 0.6 },
+    { label: "Given on Give", value: stats.data?.totalCents, format: formatUSDWhole, className: "-left-64 top-16", delay: 0.6 },
     { label: "Gifts so far", value: stats.data?.giftCount, format: (n) => n.toLocaleString("en-US"), className: "-right-60 top-40", delay: 0.75 },
     { label: "Debts fully cleared", value: stats.data?.debtsCleared, format: (n) => n.toLocaleString("en-US"), className: "-left-56 top-[340px]", delay: 0.9 },
   ];
@@ -270,11 +274,13 @@ function People() {
   return (
     <section id="people" className="scroll-mt-16 overflow-hidden py-20 sm:py-28" aria-labelledby="people-h">
       <div className="mx-auto max-w-6xl px-4 text-center sm:px-6">
-        <m.h2 {...reveal} id="people-h" className="display text-display-lg text-balance">
-          Every card is a person.
-          <br />
-          <span className="text-ink-3">Hundreds of them, from everywhere.</span>
-        </m.h2>
+        <m.div {...reveal} id="people-h">
+          <WeightHeading className="display text-display-lg text-balance">
+            Every card is a person.
+            <br />
+            <span className="text-ink-3">Hundreds of them, from everywhere.</span>
+          </WeightHeading>
+        </m.div>
         <m.p {...reveal} className="mx-auto mt-5 max-w-xl text-[17px] text-ink-2">
           Nurses, welders, bakers, students and grandparents across six continents — every one fictional, every portrait
           AI-generated, every story written with care.
@@ -303,15 +309,24 @@ function People() {
   );
 }
 
+/**
+ * The first copy of each person shares its portrait (layoutId) with the story overlay, so tapping a tile
+ * expands the photo into the story over the landing page. The duplicate (for the seamless loop) doesn't.
+ */
 function PersonTile({ card, hidden }: { card: RequestCard; hidden: boolean }) {
+  const location = useLocation();
   return (
     <Link
       to={`/story/${card.id}`}
+      state={{ background: location, card }}
       tabIndex={hidden ? -1 : undefined}
       aria-hidden={hidden || undefined}
-      className="group relative block h-64 w-48 shrink-0 overflow-hidden rounded-[26px] bg-surface-2 shadow-card ring-focus"
+      aria-label={hidden ? undefined : `${card.firstName}, ${card.city} — read their story`}
+      className="squircle group relative block h-64 w-48 shrink-0 overflow-hidden rounded-[26px] bg-surface-2 shadow-card ring-focus"
     >
-      <Avatar seed={card.avatarSeed} name={card.firstName} photoUrl={card.photoUrl} shape="card" className="absolute inset-0 transition-transform duration-700 ease-(--ease-out-expo) group-hover:scale-[1.06]" />
+      <m.div layoutId={hidden ? undefined : `art-${card.id}`} transition={spring.layout} className="absolute inset-0 overflow-hidden">
+        <Avatar seed={card.avatarSeed} name={card.firstName} photoUrl={card.photoUrl} shape="card" className="absolute inset-0 transition-transform duration-700 ease-(--ease-out-expo) group-hover:scale-[1.06]" />
+      </m.div>
       <div aria-hidden className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
       <div className="absolute inset-x-0 bottom-0 p-3.5 text-left text-white">
         <p className="text-[16px] font-semibold">{card.firstName}</p>
@@ -338,9 +353,9 @@ function HowItWorks() {
         <m.p {...reveal} className="eyebrow text-center">
           How it works
         </m.p>
-        <m.h2 {...reveal} className="display mx-auto mt-3 max-w-3xl text-center text-display-lg text-balance">
-          Three gestures. One very good feeling.
-        </m.h2>
+        <m.div {...reveal}>
+          <WeightHeading className="display mx-auto mt-3 max-w-3xl text-center text-display-lg text-balance">Three gestures. One very good feeling.</WeightHeading>
+        </m.div>
         <ol className="mt-14 grid gap-4 md:grid-cols-3">
           {steps.map((s, i) => (
             <m.li key={s.title} {...reveal} transition={{ ...reveal.transition, delay: i * 0.1 }} className="card-surface p-7 sm:p-8">
@@ -416,9 +431,9 @@ function ForSeekers() {
           <m.p {...reveal} className="eyebrow">
             For Seekers
           </m.p>
-          <m.h2 {...reveal} className="display mt-3 text-display-lg text-balance">
-            Ask for help without asking for pity.
-          </m.h2>
+          <m.div {...reveal}>
+            <WeightHeading className="display mt-3 text-display-lg text-balance">Ask for help without asking for pity.</WeightHeading>
+          </m.div>
           <m.p {...reveal} className="mt-5 max-w-md text-[17px] leading-relaxed text-ink-2">
             A five-minute request flow. A live dashboard of every gift. A place to post updates and say thank you, in your own words.
           </m.p>
@@ -451,9 +466,9 @@ function Trust() {
         <m.p {...reveal} className="eyebrow text-center">
           Trust & safety
         </m.p>
-        <m.h2 {...reveal} className="display mx-auto mt-3 max-w-3xl text-center text-display-lg text-balance">
-          Quiet on the surface. Rigorous underneath.
-        </m.h2>
+        <m.div {...reveal}>
+          <WeightHeading className="display mx-auto mt-3 max-w-3xl text-center text-display-lg text-balance">Quiet on the surface. Rigorous underneath.</WeightHeading>
+        </m.div>
         <div className="mt-14 grid gap-4 md:grid-cols-3">
           {[
             { icon: Landmark, title: "A ledger enforced by the database", body: "Every gift is one atomic Firestore transaction, checked by security rules. Totals can’t drift and nothing can be over-funded." },
@@ -484,9 +499,9 @@ function FinalCta() {
         <m.div {...reveal} className="flex justify-center">
           <Mark className="size-14" />
         </m.div>
-        <m.h2 {...reveal} className="display mt-8 text-display-lg text-balance">
-          Somebody’s whole year changes with one swipe.
-        </m.h2>
+        <m.div {...reveal}>
+          <WeightHeading className="display mt-8 text-display-lg text-balance">Somebody’s whole year changes with one swipe.</WeightHeading>
+        </m.div>
         <m.div {...reveal} className="mt-10 flex flex-wrap justify-center gap-3">
           <Magnetic>
             <ButtonLink to="/login?role=patron" size="lg" variant="accent">
@@ -508,7 +523,7 @@ function Footer() {
       <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-10 text-[13px] text-ink-3 sm:flex-row sm:items-center sm:justify-between sm:px-6">
         <div className="flex items-center gap-3">
           <Mark className="size-6" />
-          <span>Windfall — a design & engineering demo. Built on Firebase & Cloudflare.</span>
+          <span>Give — a design & engineering demo. Built on Firebase & Cloudflare.</span>
         </div>
         <p className="max-w-md">All people, stories, portraits, gifts and totals are fictional. Portraits are AI-generated. No real money moves.</p>
       </div>

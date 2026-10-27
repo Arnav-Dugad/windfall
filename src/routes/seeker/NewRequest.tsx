@@ -145,6 +145,7 @@ export default function NewRequest() {
       blurPhoto: draft.blurPhoto,
       createdAt: 0,
       isDemo: true,
+      accent: null,
   };
 
   const publish = useMutation({
@@ -437,7 +438,7 @@ function PhotoStep({ draft, set, preview }: { draft: Draft; set: SetFn; preview:
     <div className="grid gap-8 sm:grid-cols-[1fr_260px]">
       <div className="space-y-5">
         <p className="text-[16px] leading-relaxed text-ink-2 text-pretty">
-          A photo is optional. Without one, Windfall gives you a calm generated portrait — many Seekers prefer it.
+          A photo is optional. Without one, Give gives you a calm generated portrait — many Seekers prefer it.
         </p>
         <FileDrop
           kind="photo"

@@ -1,4 +1,4 @@
-# Windfall — Architecture
+# Give — Architecture
 
 ## v2 (current): Cloudflare hosting + Firebase everything else
 
@@ -18,6 +18,17 @@ Browser ──► Cloudflare Workers static assets (React SPA, SPA fallback, _he
   git-ignored `.seed.env`) writes demo data through the normal SDK, permitted by an explicit rules clause.
 - **Performance:** static hero shell in `index.html`; app bundle requested after the shell paints; Firebase SDK in a lazy
   chunk (immediate on app routes, idle on the landing page); fonts preloaded with metric-matched fallbacks.
+
+## Social & intelligence (v2.1, 2026-10-27)
+- **No server, so everything is client-side + rules:** circles (`circles/{id}`, live shared bar via `onSnapshot`), matches
+  (`matches/{id}`), follows (`users/{uid}/follows`), monthly pledges (`users/{uid}/recurring`, run on app open), media thank-yous
+  (`requests/{id}/media`, data URLs ≤ ~900KB), reports + `admins/{uid}` moderation. Gifts can carry `circleId`/`matchId`; the rules
+  check the circle/match counters move by exactly the gift amount in the same transaction.
+- **Activity** is fan-out-on-read: on open, compare each followed story's totals/updates with `seenAt`/`seenPct`.
+- **Heuristics in `shared/`** (unit-tested, shared by app and seed): `rank.ts` (For you + exploration, finishers), `search.ts`
+  (natural-language → filters), `fraud.ts` (signals for the moderation queue), `narrative.ts` (impact summary).
+- **Browser APIs, feature-detected:** Translator/LanguageDetector (Chrome built-in AI), SpeechRecognition for captions,
+  MediaRecorder, Notifications, `corner-shape: squircle`.
 
 ## Design system (`src/design/`)
 Apple-inspired: SF/Inter type, system greys, blue accent, green positive, glass materials (`.glass`, `.glass-thick`,

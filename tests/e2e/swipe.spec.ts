@@ -34,9 +34,11 @@ test("patron can swipe right, give, pass and undo", async ({ page }) => {
   const sheet = page.getByRole("dialog");
   await expect(sheet.getByRole("heading", { name: /Give to/ })).toBeVisible();
   await sheet.getByRole("button", { name: /^Give \$|^Clear .* debt/ }).click();
-  await expect(sheet.getByRole("heading", { name: "Thank you." })).toBeVisible();
-  await sheet.getByRole("button", { name: "Keep swiping" }).click();
-  await expect(sheet).toBeHidden();
+  // A gift either lands ("Thank you.") or, if it covers the rest, clears the debt (celebration).
+  const done = page.getByRole("dialog").filter({ has: page.getByRole("heading", { name: /^Thank you\.|You cleared/ }) });
+  await expect(done).toBeVisible();
+  await done.getByRole("button", { name: "Keep swiping" }).click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect(topName(page)).not.toHaveText(first);
 
   // Keyboard: pass, then undo brings the same card back.
@@ -54,7 +56,7 @@ test("patron can swipe right, give, pass and undo", async ({ page }) => {
 test("impact dashboard shows totals", async ({ page }) => {
   await signInAsPatron(page, "Theo M.");
   await page.goto("/impact");
-  await expect(page.getByText("Your impact")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Your impact", level: 1 })).toBeVisible();
   await expect(page.getByText("People helped")).toBeVisible();
 });
 

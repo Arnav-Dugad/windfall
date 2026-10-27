@@ -28,7 +28,7 @@ export function SwipeCard({
   return (
     <article
       className={cn(
-        "relative isolate h-full w-full overflow-hidden rounded-card bg-surface-2 shadow-card select-none",
+        "squircle relative isolate h-full w-full overflow-hidden rounded-card bg-surface-2 shadow-card select-none",
         "[transform-style:preserve-3d]",
         className,
       )}
@@ -98,7 +98,7 @@ export function SwipeCard({
             </span>
             <span className="num font-medium text-white/80">{remaining > 0 ? `${formatUSD(remaining)} to go` : "Cleared"}</span>
           </div>
-          <Progress value={pct} onPhoto label={`${Math.round(pct * 100)}% funded`} />
+          <Progress value={pct} onPhoto accent={card.accent} label={`${Math.round(pct * 100)}% funded`} />
         </div>
       </div>
     </article>

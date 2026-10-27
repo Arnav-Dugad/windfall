@@ -8,12 +8,13 @@ import { Avatar } from "@/components/ui/Avatar";
 import { Badge, VerificationBadge } from "@/components/ui/Badge";
 import { ButtonLink } from "@/components/ui/Button";
 import { EmptyState, ErrorState, Skeleton } from "@/components/ui/Feedback";
+import { LargeTitle } from "@/components/ui/LargeTitle";
 import { Progress } from "@/components/ui/Progress";
 import { Ticker } from "@/components/ui/Ticker";
 import { ease } from "@/design/motion";
 import { api } from "@/lib/api";
 import { useDocumentTitle, useMe } from "@/lib/hooks";
-import { timeAgo } from "@/lib/utils";
+import { cn, timeAgo } from "@/lib/utils";
 import { STATUS_BADGE } from "./status";
 
 export default function SeekerDashboard() {
@@ -24,19 +25,19 @@ export default function SeekerDashboard() {
   const name = me?.user?.displayName && me.user.displayName !== "New Seeker" ? me.user.displayName : null;
 
   return (
-    <main className="mx-auto max-w-5xl px-4 pt-8 pb-16 sm:px-6 sm:pt-12">
-      <div className="flex flex-wrap items-end justify-between gap-6">
-        <div>
-          <p className="eyebrow">Seeker</p>
-          <h1 className="display mt-4 text-display-lg">{name ? `Hello, ${name}.` : "Hello."}</h1>
-          <p className="mt-3 max-w-lg text-[16px] text-ink-2 text-pretty">
-            Your requests, the people backing them, and the notes you send back — all in one quiet place.
-          </p>
-        </div>
-        <ButtonLink to="/seeker/new" variant="primary">
-          <Plus className="size-4" aria-hidden /> New request
-        </ButtonLink>
-      </div>
+    <main className="mx-auto max-w-5xl px-4 pb-16 sm:px-6">
+      <LargeTitle
+        eyebrow="Seeker"
+        title={name ? `Hello, ${name}.` : "Hello."}
+        subtitle="Your requests, the people backing them, and the notes you send back — all in one quiet place."
+        actions={
+          <ButtonLink to="/seeker/new" variant="primary">
+            <Plus className="size-4" aria-hidden /> New request
+          </ButtonLink>
+        }
+      />
+
+      {q.data && q.data.requests.length > 0 && <Summary requests={q.data.requests} />}
 
       {q.isPending ? (
         <div className="mt-10 space-y-4">
@@ -55,7 +56,7 @@ export default function SeekerDashboard() {
           }
         />
       ) : (
-        <ul className="mt-10 space-y-4">
+        <ul className="mt-6 space-y-4">
           {q.data.requests.map((r, i) => (
             <m.li key={r.id} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06, duration: 0.6, ease: ease.outExpo }}>
               <RequestRow r={r} />
@@ -64,6 +65,36 @@ export default function SeekerDashboard() {
         </ul>
       )}
     </main>
+  );
+}
+
+/** Widget row across every request: total raised, gifts, and how many are live. */
+function Summary({ requests }: { requests: RequestCard[] }) {
+  const raised = requests.reduce((s, r) => s + r.fundedCents, 0);
+  const goal = requests.reduce((s, r) => s + r.goalCents, 0);
+  const gifts = requests.reduce((s, r) => s + r.giftCount, 0);
+  const live = requests.filter((r) => r.status === "active").length;
+  const tiles = [
+    { label: "Raised", value: <Ticker value={raised} format={formatUSDWhole} />, foot: <Progress value={goal ? raised / goal : 0} size="sm" className="mt-3" /> },
+    { label: "Gifts", value: <span className="num">{gifts}</span>, foot: <p className="mt-2 text-[12.5px] text-ink-3">from Patrons worldwide</p> },
+    { label: "Live now", value: <span className="num">{live}</span>, foot: <p className="mt-2 text-[12.5px] text-ink-3">of {requests.length} {requests.length === 1 ? "request" : "requests"}</p> },
+  ];
+  return (
+    <ul className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
+      {tiles.map((t, i) => (
+        <m.li
+          key={t.label}
+          initial={{ opacity: 0, y: 12, scale: 0.98 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ delay: i * 0.06, duration: 0.6, ease: ease.outExpo }}
+          className={cn("card-surface squircle rounded-[24px] p-5", i === 0 && "col-span-2 sm:col-span-1")}
+        >
+          <p className="text-[13px] font-semibold text-ink-2">{t.label}</p>
+          <p className="display mt-2 text-[2.2rem] leading-none">{t.value}</p>
+          {t.foot}
+        </m.li>
+      ))}
+    </ul>
   );
 }
 
@@ -80,7 +111,7 @@ function RequestRow({ r }: { r: RequestCard }) {
         </div>
         <p className="display mt-3 text-[1.6rem] leading-tight text-balance">“{r.headline}”</p>
         <p className="mt-1 text-[13px] text-ink-3">Posted {timeAgo(r.createdAt)}</p>
-        <Progress className="mt-4" value={pct} />
+        <Progress className="mt-4" value={pct} accent={r.accent} />
       </div>
       <div className="flex items-end justify-between gap-6 sm:block sm:text-right">
         <div>

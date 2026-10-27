@@ -1,23 +1,29 @@
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, Download, Flame, HeartHandshake, Share2, Sparkles, Trophy } from "lucide-react";
+import { ArrowRight, ChevronRight, Download, Flame, HeartHandshake, Quote, Share2, Sparkles, Trophy } from "lucide-react";
 import { m } from "motion/react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
 import { CATEGORY_LABELS } from "@shared/domain";
 import { formatUSD, formatUSDWhole } from "@shared/money";
+import { impactNarrative } from "@shared/narrative";
 import { GivingChart } from "@/components/impact/GivingChart";
 import { ImpactMap } from "@/components/impact/ImpactMap";
+import { ImpactPass } from "@/components/impact/ImpactPass";
+import { passGradient } from "@/components/impact/pass";
 import { Avatar } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/Badge";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { EmptyState, ErrorState, Skeleton } from "@/components/ui/Feedback";
+import { LargeTitle } from "@/components/ui/LargeTitle";
 import { Sheet } from "@/components/ui/Sheet";
 import { Ticker } from "@/components/ui/Ticker";
 import { toast } from "@/lib/toast";
-import { reveal } from "@/design/motion";
-import { api, type Impact as ImpactData } from "@/lib/api";
+import { ease, reveal } from "@/design/motion";
+import { api } from "@/lib/api";
 import { useDocumentTitle, useMe, useTheme } from "@/lib/hooks";
 import { timeAgo } from "@/lib/utils";
+
+type ImpactData = Awaited<ReturnType<typeof api.impact>>;
 
 export default function Impact() {
   useDocumentTitle("Your impact");
@@ -43,20 +49,30 @@ export default function Impact() {
   }
 
   return (
-    <main className="mx-auto max-w-6xl px-4 pt-8 pb-16 sm:px-6 sm:pt-12">
-      <div className="flex flex-wrap items-end justify-between gap-6">
-        <div>
-          <p className="eyebrow">Your impact</p>
-          <h1 className="display mt-4 text-display-xl text-accent-ink">
+    <main className="mx-auto max-w-6xl px-4 pb-16 sm:px-6">
+      <LargeTitle
+        title="Your impact"
+        actions={
+          <Button variant="outline" size="sm" onClick={() => setSharing(true)}>
+            <Share2 className="size-4" aria-hidden /> Share card
+          </Button>
+        }
+      />
+
+      <div className="mt-6 grid items-start gap-8 lg:grid-cols-[1fr_340px] lg:gap-12">
+        <div className="min-w-0">
+          <p className="display num text-display-xl leading-none text-accent-ink" aria-label={`${formatUSDWhole(d.totals.totalCents)} given`}>
             <Ticker value={d.totals.totalCents} format={formatUSDWhole} duration={1.8} />
-          </h1>
+          </p>
           <p className="mt-3 text-[16px] text-ink-2">
             given across <span className="num text-ink">{d.totals.giftCount}</span> gifts. Every dollar here is demo money.
           </p>
+          <Narrative data={d} />
+          <WrappedLink />
         </div>
-        <Button variant="outline" onClick={() => setSharing(true)}>
-          <Share2 className="size-4" aria-hidden /> Share impact card
-        </Button>
+        <m.div initial={{ opacity: 0, y: 24, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ duration: 1, delay: 0.15, ease: ease.outExpo }}>
+          <ImpactPass name={name} totals={d.totals} memberSince={d.memberSince} />
+        </m.div>
       </div>
 
       <section className="mt-10 grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label="Highlights">
@@ -165,6 +181,46 @@ export default function Impact() {
   );
 }
 
+/** "What your giving changed this month", written on-device from the Patron's own gifts. */
+function Narrative({ data }: { data: ImpactData }) {
+  const text = useMemo(() => impactNarrative(data.month), [data.month]);
+  return (
+    <m.section {...reveal} aria-labelledby="story-h" className="glass-thick mt-8 rounded-[26px] p-5 shadow-card sm:p-6">
+      <div className="flex items-center gap-2.5">
+        <span className="grid size-8 place-items-center rounded-full text-white" style={{ background: passGradient }}>
+          <Quote className="size-3.5" aria-hidden />
+        </span>
+        <h2 id="story-h" className="text-[15px] font-semibold">
+          Your {data.month.monthName}, in words
+        </h2>
+      </div>
+      <p className="mt-3 text-[17px] leading-relaxed text-pretty">{text}</p>
+      <p className="mt-3 text-[12px] text-ink-3">Written on your device from your own gifts.</p>
+    </m.section>
+  );
+}
+
+function WrappedLink() {
+  const [year] = useState(() => new Date().getFullYear());
+  return (
+    <Link
+      to="/wrapped"
+      className="press group relative mt-4 flex items-center gap-4 overflow-hidden rounded-[22px] p-4 text-white shadow-card ring-focus"
+      style={{ background: "linear-gradient(120deg, #ff375f, #bf5af2 50%, #5e5ce6)" }}
+    >
+      <span aria-hidden className="pointer-events-none absolute -top-10 -right-6 size-32 rounded-full bg-white/20 blur-2xl transition-transform duration-700 group-hover:scale-125" />
+      <span className="relative grid size-11 place-items-center rounded-[14px] bg-white/20">
+        <Sparkles className="size-5" aria-hidden />
+      </span>
+      <span className="relative min-w-0 flex-1">
+        <span className="block text-[16px] font-semibold">Your {year} Wrapped</span>
+        <span className="block text-[13px] text-white/80">Your year of giving, in a few taps.</span>
+      </span>
+      <ChevronRight className="relative size-5 transition-transform group-hover:translate-x-0.5" aria-hidden />
+    </Link>
+  );
+}
+
 function Stat({
   icon: Icon,
   label,
@@ -222,7 +278,7 @@ function ShareSheet({ open, onOpenChange, impact, name }: { open: boolean; onOpe
     const f = new File([file.blob], "windfall-impact.png", { type: "image/png" });
     try {
       if (navigator.canShare?.({ files: [f] })) {
-        await navigator.share({ files: [f], title: "My Windfall impact" });
+        await navigator.share({ files: [f], title: "My Give impact" });
       } else {
         await navigator.clipboard.write([new ClipboardItem({ "image/png": file.blob })]);
         toast({ message: "Image copied to clipboard", tone: "accent" });

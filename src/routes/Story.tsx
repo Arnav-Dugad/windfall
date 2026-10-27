@@ -1,13 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, BadgeCheck, Flag, HandCoins, MessageCircleHeart, Newspaper, X } from "lucide-react";
-import { m } from "motion/react";
+import { ArrowLeft, ArrowUp, BadgeCheck, Bell, BellRing, Flag, HandCoins, Languages, MessageCircleHeart, Newspaper, Users, X } from "lucide-react";
+import { m, useInView, useReducedMotion, useScroll, useTransform } from "motion/react";
 import { RadioGroup } from "radix-ui";
-import { useCallback, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useId, useRef, useState, type RefObject } from "react";
 import { useLocation, useNavigate, useParams } from "react-router";
-import { CATEGORY_LABELS, type RequestCard, type RequestDetail } from "@shared/domain";
-import { formatUSD, formatUSDWhole, progress, remainingCents } from "@shared/money";
+import { CATEGORY_LABELS, type RequestCard, type RequestDetail, type SeekerUpdate } from "@shared/domain";
+import { formatCompactUSD, formatUSD, formatUSDWhole, progress, remainingCents } from "@shared/money";
 import { Celebration } from "@/components/deck/Celebration";
 import { GiveSheet } from "@/components/deck/GiveSheet";
+import { fxCoinBurst } from "@/components/effects";
+import { flyCoin } from "@/components/effects/flyCoin";
+import { MediaPlayer } from "@/components/media/MediaPlayer";
 import { Avatar } from "@/components/ui/Avatar";
 import { Badge, DemoBadge, VerificationBadge } from "@/components/ui/Badge";
 import { Button, IconButton } from "@/components/ui/Button";
@@ -19,7 +22,12 @@ import { toast } from "@/lib/toast";
 import { ease, spring } from "@/design/motion";
 import { api } from "@/lib/api";
 import { useDocumentTitle, useMe } from "@/lib/hooks";
-import { cn, possessive, shortDate, timeAgo } from "@/lib/utils";
+import { createCircle, follow, isFollowing, unfollow } from "@/lib/social";
+import { languageName, translateAll, translationPair, translationSupported } from "@/lib/translate";
+import { cn, haptic, possessive, shortDate, timeAgo } from "@/lib/utils";
+
+/** The element the story scrolls in: the window on the full page, the overlay's scroller over the deck. */
+const ScrollRoot = createContext<RefObject<HTMLDivElement | null> | null>(null);
 
 function useStory(id: string | undefined) {
   // When opened from the deck, the card is passed along so the hero renders (and animates) instantly.
@@ -44,7 +52,7 @@ export default function Story() {
       <Button variant="ghost" size="sm" className="-ml-3 mb-4" onClick={() => (history.length > 1 ? navigate(-1) : navigate("/"))}>
         <ArrowLeft className="size-4" aria-hidden /> Back
       </Button>
-      {q.isPending ? <StorySkeleton /> : q.error ? <ErrorState error={q.error} onRetry={() => q.refetch()} /> : <StoryContent story={q.data.request} />}
+      {q.isPending ? <StorySkeleton /> : q.error ? <ErrorState error={q.error} onRetry={() => q.refetch()} /> : <StoryContent story={q.data.request} aboveTabBar />}
     </main>
   );
 }
@@ -55,6 +63,7 @@ export function StoryOverlay() {
   const navigate = useNavigate();
   const q = useStory(id);
   const close = useCallback(() => navigate(-1), [navigate]);
+  const scroller = useRef<HTMLDivElement>(null);
   useDocumentTitle(q.data ? `${possessive(q.data.request.firstName)} story` : "Story");
 
   useEffect(() => {
@@ -77,7 +86,7 @@ export function StoryOverlay() {
         exit={{ opacity: 0 }}
         onClick={close}
       />
-      <div className="pointer-events-none absolute inset-0 overflow-y-auto overscroll-contain sm:px-6 sm:py-10">
+      <div ref={scroller} className="pointer-events-none absolute inset-0 overflow-y-auto overscroll-contain sm:px-6 sm:py-10">
         <m.div
           className="pointer-events-auto relative mx-auto min-h-full max-w-3xl bg-canvas px-4 pt-4 pb-16 sm:min-h-0 sm:rounded-sheet sm:px-8 sm:pt-8 sm:shadow-float"
           initial={{ opacity: 0 }}
@@ -91,7 +100,9 @@ export function StoryOverlay() {
             </IconButton>
           </div>
           <div className="-mt-11">
-            {q.isPending ? <StorySkeleton /> : q.error ? <ErrorState error={q.error} /> : <StoryContent story={q.data.request} />}
+            <ScrollRoot.Provider value={scroller}>
+              {q.isPending ? <StorySkeleton /> : q.error ? <ErrorState error={q.error} /> : <StoryContent story={q.data.request} />}
+            </ScrollRoot.Provider>
           </div>
         </m.div>
       </div>
@@ -99,17 +110,52 @@ export function StoryOverlay() {
   );
 }
 
-function StoryContent({ story }: { story: RequestDetail }) {
+function StoryContent({ story, aboveTabBar = false }: { story: RequestDetail; aboveTabBar?: boolean }) {
   const { data: me } = useMe();
   const qc = useQueryClient();
   const navigate = useNavigate();
+  const root = useContext(ScrollRoot);
   const [giving, setGiving] = useState(false);
   const [celebrate, setCelebrate] = useState<RequestCard | null>(null);
   const [reporting, setReporting] = useState(false);
+  const [circling, setCircling] = useState(false);
   const pct = progress(story.goalCents, story.fundedCents);
   const remaining = remainingCents(story.goalCents, story.fundedCents);
   const isPatron = me?.user?.role === "patron";
   const canGive = story.status === "active";
+  const tr = useStoryTranslation(story);
+
+  // Scroll-linked parallax: the portrait drifts down and settles in slightly as the page scrolls past it.
+  const hero = useRef<HTMLDivElement>(null);
+  const reduce = useReducedMotion();
+  const { scrollYProgress } = useScroll({ container: root ?? undefined, target: hero, offset: ["start start", "end start"] });
+  const heroY = useTransform(scrollYProgress, [0, 1], reduce ? [0, 0] : [0, 90]);
+  const heroScale = useTransform(scrollYProgress, [0, 1], reduce ? [1, 1] : [1.04, 1.14]);
+  const heroDim = useTransform(scrollYProgress, [0, 1], [0, reduce ? 0 : 0.35]);
+
+  // The sticky give bar appears once the main funding panel has scrolled away.
+  const fund = useRef<HTMLElement>(null);
+  const fundInView = useInView(fund, { root: root ?? undefined, margin: "0px 0px -20% 0px" });
+
+  const refreshAfterGift = () => {
+    for (const key of [["story", story.id], ["impact"], ["deck"], ["active-cards"], ["following", story.id]]) void qc.invalidateQueries({ queryKey: key });
+  };
+
+  const clearIt = useMutation({
+    mutationFn: () => api.give({ requestId: story.id, kind: "clear", anonymous: me?.user?.anonymousByDefault ?? false }),
+    onSuccess: (r) => {
+      haptic([10, 30, 14]);
+      refreshAfterGift();
+      setCelebrate(r.request);
+      toast({
+        message: `You cleared ${possessive(story.firstName)} debt · ${formatUSD(r.gift.amountCents)}`,
+        tone: "positive",
+        duration: 8000,
+        action: { label: "Undo", onClick: () => void api.reverseGift(r.gift.id).then(refreshAfterGift) },
+      });
+    },
+    onError: (e) => toast({ message: e.message, tone: "danger" }),
+  });
 
   const stagger = (i: number) => ({
     initial: { opacity: 0, y: 14 },
@@ -120,11 +166,15 @@ function StoryContent({ story }: { story: RequestDetail }) {
   return (
     <article>
       <m.div
+        ref={hero}
         layoutId={`art-${story.id}`}
         transition={spring.layout}
-        className="relative mx-auto aspect-[4/5] max-h-[68vh] w-full overflow-hidden rounded-card shadow-card sm:aspect-[3/2] sm:max-h-none [&_img]:object-[50%_28%]"
+        className="squircle relative mx-auto aspect-[4/5] max-h-[68vh] w-full overflow-hidden rounded-card shadow-card sm:aspect-[3/2] sm:max-h-none [&_img]:object-[50%_28%]"
       >
-        <Avatar seed={story.avatarSeed} name={story.firstName} photoUrl={story.photoUrl} blur={story.blurPhoto} shape="card" className="absolute inset-0" />
+        <m.div style={{ y: heroY, scale: heroScale }} className="absolute inset-0 will-change-transform">
+          <Avatar seed={story.avatarSeed} name={story.firstName} photoUrl={story.photoUrl} blur={story.blurPhoto} shape="card" className="absolute inset-0" />
+        </m.div>
+        <m.div aria-hidden style={{ opacity: heroDim }} className="absolute inset-0 bg-black" />
       </m.div>
 
       <m.header className="mt-7" {...stagger(0)}>
@@ -142,10 +192,27 @@ function StoryContent({ story }: { story: RequestDetail }) {
         <p className="mt-2 text-[15px] text-ink-2">
           {story.city}, {story.country} · posted {timeAgo(story.createdAt)}
         </p>
-        <p className="display mt-6 text-[1.85rem] leading-[1.15] text-balance sm:text-[2.2rem]">“{story.headline}”</p>
+        <div className="mt-4 flex flex-wrap gap-2">
+          {isPatron && <FollowButton story={story} />}
+          {isPatron && canGive && (
+            <Button variant="outline" size="sm" onClick={() => setCircling(true)}>
+              <Users className="size-4" aria-hidden /> Start a Giving Circle
+            </Button>
+          )}
+          {tr.pair && (
+            <Button variant="outline" size="sm" onClick={tr.toggle} disabled={tr.busy} aria-pressed={tr.on}>
+              <Languages className="size-4" aria-hidden />
+              {tr.busy ? "Translating…" : tr.on ? "Show original" : `Translate to ${languageName(tr.pair.target)}`}
+            </Button>
+          )}
+        </div>
+        <p className="display mt-6 text-[1.85rem] leading-[1.15] text-balance sm:text-[2.2rem]" lang={tr.on ? tr.pair?.target : undefined}>
+          “{tr.on && tr.text ? tr.text.headline : story.headline}”
+        </p>
+        {tr.on && tr.pair && <p className="mt-2 text-[12.5px] text-ink-3">Translated on your device from {languageName(tr.pair.source)}.</p>}
       </m.header>
 
-      <m.section {...stagger(1)} aria-label="Funding" className="card-surface mt-8 p-5 sm:p-7">
+      <m.section ref={fund} {...stagger(1)} aria-label="Funding" className="card-surface mt-8 p-5 sm:p-7">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <p className="eyebrow">Raised</p>
@@ -158,7 +225,7 @@ function StoryContent({ story }: { story: RequestDetail }) {
           </div>
           <p className="display text-[2.2rem] leading-none text-ink-3 num">{Math.round(pct * 100)}%</p>
         </div>
-        <Progress className="mt-5" value={pct} size="lg" />
+        <Progress className="mt-5" value={pct} size="lg" accent={story.accent} />
         {canGive && (
           <div className="mt-6 flex flex-col gap-3 sm:flex-row">
             {isPatron ? (
@@ -179,8 +246,8 @@ function StoryContent({ story }: { story: RequestDetail }) {
         <h2 id="story-h" className="eyebrow">
           In {possessive(story.firstName)} words
         </h2>
-        <div className="mt-4 space-y-4 text-[17px] leading-[1.7] text-ink/90 text-pretty">
-          {story.story.split(/\n\n+/).map((p, i) => (
+        <div className="mt-4 space-y-4 text-[17px] leading-[1.7] text-ink/90 text-pretty" lang={tr.on ? tr.pair?.target : undefined}>
+          {(tr.on && tr.text ? tr.text.paragraphs : paragraphsOf(story.story)).map((p, i) => (
             <p key={i}>{p}</p>
           ))}
         </div>
@@ -235,9 +302,10 @@ function StoryContent({ story }: { story: RequestDetail }) {
                   {u.kind === "thanks" ? <MessageCircleHeart className="size-4" aria-hidden /> : <Newspaper className="size-4" aria-hidden />}
                 </span>
                 <p className="text-[12.5px] text-ink-3">
-                  {u.kind === "thanks" ? "Thank-you note" : "Update"} · {shortDate(u.createdAt)}
+                  {u.kind === "thanks" ? (mediaIdOf(u) ? "Thank-you message" : "Thank-you note") : "Update"} · {shortDate(u.createdAt)}
                 </p>
                 <p className="mt-1.5 text-[15.5px] leading-relaxed text-pretty">{u.body}</p>
+                {mediaIdOf(u) && <MediaPlayer requestId={story.id} mediaId={mediaIdOf(u)!} accent={story.accent} />}
               </li>
             ))}
           </ol>
@@ -245,11 +313,28 @@ function StoryContent({ story }: { story: RequestDetail }) {
       )}
 
       <div className="mt-14 flex flex-wrap items-center justify-between gap-4 border-t border-line pt-6 text-[13px] text-ink-3">
-        <p>Every story on Windfall in this demo is fictional.</p>
+        <p>Every story on Give in this demo is fictional.</p>
         <button onClick={() => setReporting(true)} className="inline-flex items-center gap-1.5 rounded-full px-2 py-1 transition-colors hover:text-ink ring-focus">
           <Flag className="size-3.5" aria-hidden /> Report this story
         </button>
       </div>
+
+      {canGive && (
+        <GiveBar
+          story={story}
+          show={!fundInView}
+          aboveTabBar={aboveTabBar}
+          isPatron={isPatron}
+          clearing={clearIt.isPending}
+          onGive={() => setGiving(true)}
+          onClear={(from) => {
+            void fxCoinBurst(from.x, from.y, 1.4);
+            flyCoin(from, { delay: 40 });
+            clearIt.mutate();
+          }}
+          onSignIn={() => navigate(`/login?role=patron&next=/story/${story.id}`)}
+        />
+      )}
 
       <GiveSheet
         card={giving ? story : null}
@@ -257,9 +342,7 @@ function StoryContent({ story }: { story: RequestDetail }) {
         anonymousDefault={me?.user?.anonymousByDefault ?? false}
         onCancel={() => setGiving(false)}
         onGiven={(r) => {
-          void qc.invalidateQueries({ queryKey: ["story", story.id] });
-          void qc.invalidateQueries({ queryKey: ["impact"] });
-          void qc.invalidateQueries({ queryKey: ["deck"] });
+          refreshAfterGift();
           if (r.cleared) {
             setGiving(false);
             setCelebrate(r.request);
@@ -269,7 +352,191 @@ function StoryContent({ story }: { story: RequestDetail }) {
       />
       <Celebration card={celebrate} onClose={() => setCelebrate(null)} />
       <ReportSheet open={reporting} onOpenChange={setReporting} requestId={story.id} name={story.firstName} />
+      {isPatron && <CircleSheet open={circling} onOpenChange={setCircling} story={story} />}
     </article>
+  );
+}
+
+const paragraphsOf = (text: string) => text.split(/\n\n+/);
+/** Thank-you voice notes / videos hang off an update by id. */
+const mediaIdOf = (u: SeekerUpdate) => (u as SeekerUpdate & { mediaId?: string | null }).mediaId ?? null;
+
+/** Feature-detected on-device translation of the headline and story (hidden where unsupported). */
+function useStoryTranslation(story: RequestDetail) {
+  const pair = useQuery({
+    queryKey: ["translate-pair", story.id],
+    queryFn: () => translationPair(`${story.headline}\n${story.story}`),
+    enabled: translationSupported(),
+    staleTime: Infinity,
+  });
+  const [on, setOn] = useState(false);
+  const run = useMutation({
+    mutationFn: async () => {
+      const paragraphs = paragraphsOf(story.story);
+      const [headline, ...rest] = await translateAll([story.headline, ...paragraphs], pair.data!);
+      return { headline: headline!, paragraphs: rest };
+    },
+    onSuccess: () => setOn(true),
+    onError: () => toast({ message: "Translation isn’t available right now.", tone: "danger" }),
+  });
+  return {
+    pair: pair.data ?? null,
+    on,
+    busy: run.isPending,
+    text: run.data ?? null,
+    toggle: () => (on ? setOn(false) : run.data ? setOn(true) : run.mutate()),
+  };
+}
+
+function FollowButton({ story }: { story: RequestDetail }) {
+  const qc = useQueryClient();
+  const key = ["following", story.id];
+  const q = useQuery({ queryKey: key, queryFn: () => isFollowing(story.id), staleTime: 60_000 });
+  const toggle = useMutation({
+    mutationFn: (next: boolean) => (next ? follow(story.id, progress(story.goalCents, story.fundedCents)) : unfollow(story.id)),
+    onMutate: async (next) => {
+      await qc.cancelQueries({ queryKey: key });
+      const prev = qc.getQueryData<boolean>(key);
+      qc.setQueryData(key, next);
+      haptic(6);
+      return { prev };
+    },
+    onSuccess: (_, next) => {
+      void qc.invalidateQueries({ queryKey: ["activity"] });
+      if (next) toast({ message: `You’ll hear quietly when ${story.firstName} posts or hits a milestone.`, tone: "accent" });
+    },
+    onError: (e, _, ctx) => {
+      qc.setQueryData(key, ctx?.prev ?? false);
+      toast({ message: e.message, tone: "danger" });
+    },
+  });
+  const on = !!q.data;
+  return (
+    <Button variant={on ? "quiet" : "outline"} size="sm" onClick={() => toggle.mutate(!on)} disabled={q.isPending} aria-pressed={on}>
+      {on ? <BellRing className="size-4 text-accent" aria-hidden /> : <Bell className="size-4" aria-hidden />}
+      {on ? "Following" : "Follow"}
+    </Button>
+  );
+}
+
+/** Floating glass bar that keeps "Give" one tap away while reading. */
+function GiveBar({
+  story,
+  show,
+  aboveTabBar,
+  isPatron,
+  clearing,
+  onGive,
+  onClear,
+  onSignIn,
+}: {
+  story: RequestDetail;
+  show: boolean;
+  aboveTabBar: boolean;
+  isPatron: boolean;
+  clearing: boolean;
+  onGive: () => void;
+  onClear: (from: { x: number; y: number }) => void;
+  onSignIn: () => void;
+}) {
+  const remaining = remainingCents(story.goalCents, story.fundedCents);
+  return (
+    <div
+      className={cn(
+        "pointer-events-none sticky z-20 mt-10 flex justify-center",
+        aboveTabBar ? "bottom-[calc(max(env(safe-area-inset-bottom),12px)+5.25rem)] md:bottom-6" : "bottom-[max(env(safe-area-inset-bottom),12px)] sm:bottom-4",
+      )}
+    >
+      <m.div
+        initial={false}
+        animate={show ? { opacity: 1, y: 0, scale: 1 } : { opacity: 0, y: 28, scale: 0.97 }}
+        transition={spring.sheet}
+        aria-hidden={!show}
+        inert={!show}
+        className={cn("glass-thick flex w-full max-w-xl items-center gap-3 rounded-full py-2 pr-2 pl-2.5 shadow-float", show && "pointer-events-auto")}
+      >
+        <Avatar seed={story.avatarSeed} name={story.firstName} photoUrl={story.photoUrl} blur={story.blurPhoto} className="size-10 shrink-0" />
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-[13.5px] font-semibold num">
+            {formatCompactUSD(remaining)} <span className="font-normal text-ink-2">to clear {story.firstName}</span>
+          </p>
+          <Progress value={progress(story.goalCents, story.fundedCents)} size="sm" accent={story.accent} className="mt-1.5" coinTarget />
+        </div>
+        {isPatron ? (
+          <>
+            <Button
+              variant="positive"
+              size="sm"
+              disabled={clearing}
+              className="hidden sm:inline-flex"
+              aria-label={`Clear ${possessive(story.firstName)} debt with ${formatUSD(remaining)}`}
+              onClick={(e) => {
+                const b = e.currentTarget.getBoundingClientRect();
+                onClear({ x: b.left + b.width / 2, y: b.top + b.height / 2 });
+              }}
+            >
+              <ArrowUp className="size-4" aria-hidden /> Clear
+            </Button>
+            <Button variant="accent" size="sm" onClick={onGive}>
+              <HandCoins className="size-4" aria-hidden /> Give
+            </Button>
+          </>
+        ) : (
+          <Button size="sm" onClick={onSignIn}>
+            Sign in to give
+          </Button>
+        )}
+      </m.div>
+    </div>
+  );
+}
+
+function CircleSheet({ open, onOpenChange, story }: { open: boolean; onOpenChange: (o: boolean) => void; story: RequestDetail }) {
+  const navigate = useNavigate();
+  const id = useId();
+  const [name, setName] = useState(`Friends of ${story.firstName}`);
+  const create = useMutation({
+    mutationFn: () => createCircle(story.id, name.trim().slice(0, 60)),
+    onSuccess: (circleId) => {
+      onOpenChange(false);
+      navigate(`/circles/${circleId}`);
+    },
+  });
+  return (
+    <Sheet
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Start a Giving Circle"
+      description={`Pool gifts with friends toward ${possessive(story.firstName)} ${formatCompactUSD(remainingCents(story.goalCents, story.fundedCents))}. Everyone sees one shared, live bar.`}
+    >
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (name.trim().length >= 2) create.mutate();
+        }}
+        className="pb-1"
+      >
+        <label htmlFor={id} className="eyebrow mb-2 block">
+          Circle name
+        </label>
+        <input
+          id={id}
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          maxLength={60}
+          autoFocus
+          className="h-12 w-full rounded-control bg-fill px-4 text-[16px] ring-focus"
+        />
+        {create.error && (
+          <p role="alert" className="mt-3 text-[14px] text-danger">
+            {create.error.message}
+          </p>
+        )}
+        <Button type="submit" size="lg" className="mt-5 w-full" disabled={create.isPending || name.trim().length < 2}>
+          <Users className="size-4" aria-hidden /> {create.isPending ? "Creating…" : "Create circle & invite friends"}
+        </Button>
+      </form>
+    </Sheet>
   );
 }
 

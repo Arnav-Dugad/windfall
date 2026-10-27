@@ -155,6 +155,10 @@ function DeckCard({
   const prevSlot = swipe.stack[Math.max(0, Math.min(depth, 2) - 1)]!;
   const leanScale = useTransform(topProgress, [0, 1], [1, depth > 0 ? prevSlot.scale / slot.scale : 1]);
   const leanY = useTransform(topProgress, [0, 1], [0, depth > 0 ? prevSlot.y - slot.y : 0]);
+  // Depth of field: cards behind blur and dim a little more while the top card is lifted.
+  const dof = useTransform(topProgress, [0, 1], depth > 0
+    ? [`blur(${depth * 0.6}px) brightness(${1 - depth * 0.05})`, `blur(${depth * 2.6}px) brightness(${1 - depth * 0.16})`]
+    : ["blur(0px) brightness(1)", "blur(0px) brightness(1)"]);
 
   const dirFromOffset = (ox: number, oy: number, vx = 0, vy = 0): SwipeDir | null => {
     const up = axis === "both" && (-oy > swipe.distanceThreshold || -vy > swipe.velocityThreshold) && -oy > Math.abs(ox) * 0.8;
@@ -216,7 +220,7 @@ function DeckCard({
       // Behind cards are decorative until they reach the top: inert removes them from focus and the a11y tree.
       inert={!isTop}
     >
-      <m.div className="h-full w-full" style={{ scale: leanScale, y: leanY }}>
+      <m.div className="h-full w-full" style={{ scale: leanScale, y: leanY, filter: depth > 0 ? dof : undefined }}>
         <m.div
           className={cn("relative h-full w-full origin-[50%_85%]", isTop && "cursor-grab active:cursor-grabbing")}
           style={{ x, y, rotate, rotateX, rotateY, touchAction: axis === "x" ? "pan-y" : "none" }}
@@ -228,10 +232,13 @@ function DeckCard({
           animate={returningFrom ? { x: 0, y: 0 } : undefined}
           transition={spring.snapBack}
         >
-          <SwipeCard card={card} interactive={interactive} priority={depth < 2} />
+          {/* Cards waiting in the stack "breathe" while idle — a quiet hint that they're swipeable. */}
+          <div className={cn("h-full w-full", depth > 0 && "breathe-card")} style={depth > 0 ? { animationDelay: `${depth * 0.7}s` } : undefined}>
+            <SwipeCard card={card} interactive={interactive} priority={depth < 2} />
+          </div>
           {isTop && (
             <>
-              <Stamp label="Give" tone="accent" opacity={giveOpacity} scale={giveScale} className="top-16 left-5 -rotate-[10deg]" />
+              <Stamp label="Give" tone="accent" color={card.accent} opacity={giveOpacity} scale={giveScale} className="top-16 left-5 -rotate-[10deg]" stampId="give" />
               <Stamp label="Pass" tone="ink" opacity={passOpacity} scale={passScale} className="top-16 right-5 rotate-[10deg]" />
               <Stamp
                 label="Clear it"
@@ -254,8 +261,14 @@ function Stamp({
   opacity,
   scale,
   className,
+  color,
+  stampId,
 }: {
   label: string;
+  /** Portrait accent for the Give stamp. */
+  color?: string | null;
+  /** Lets the deck find the stamp's position (the Give stamp morphs into a flying coin). */
+  stampId?: string;
   tone: "accent" | "ink" | "positive";
   opacity: MotionValue<number>;
   scale: MotionValue<number>;
@@ -267,9 +280,9 @@ function Stamp({
     positive: "bg-positive text-white shadow-[0_8px_30px_-6px_rgb(52_199_89/0.7)]",
   };
   return (
-    <div className={cn("pointer-events-none absolute", className)} aria-hidden>
+    <div className={cn("pointer-events-none absolute", className)} aria-hidden data-stamp={stampId}>
       <m.div
-        style={{ opacity, scale }}
+        style={{ opacity, scale, ...(color ? { background: color, boxShadow: `0 8px 30px -6px ${color}` } : {}) }}
         className={cn(
           "rounded-full px-5 py-2 text-[19px] font-bold tracking-[-0.01em] backdrop-blur-md",
           tones[tone],

@@ -199,3 +199,102 @@
     transform: none;
   }
 }
+
+/* ---- v3 design details ------------------------------------------------------------------------- */
+@layer components {
+  /* Haptic-style press: a quick scale-down with an inner-shadow "give", on every control. */
+  .press {
+    transition:
+      transform 160ms var(--ease-out-expo),
+      box-shadow 160ms var(--ease-out-expo),
+      background-color 140ms,
+      filter 140ms;
+  }
+  .press:active:not(:disabled) {
+    transform: scale(0.965);
+    box-shadow: inset 0 2px 6px rgb(0 0 0 / 0.16);
+  }
+
+  /* Continuous-corner squircles where the browser supports CSS corner-shape (graceful fallback to radius). */
+  @supports (corner-shape: squircle) {
+    .squircle {
+      corner-shape: squircle;
+    }
+    .card-surface,
+    .rounded-card,
+    .rounded-tile,
+    .rounded-sheet,
+    .rounded-t-sheet {
+      corner-shape: squircle;
+    }
+  }
+
+  /* Idle "breathing" for cards waiting in the stack — a hint that they're next. */
+  .breathe-card {
+    animation: breathe-card 4.2s ease-in-out infinite;
+  }
+  @keyframes breathe-card {
+    0%,
+    100% {
+      transform: translateY(0) scale(1);
+    }
+    50% {
+      transform: translateY(-3px) scale(1.006);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .breathe-card {
+      animation: none;
+    }
+  }
+
+  /* Bloom when a progress bar fills to the brim. */
+  .bloom::after {
+    content: "";
+    position: absolute;
+    inset: -6px;
+    border-radius: 999px;
+    box-shadow: 0 0 18px 4px color-mix(in srgb, var(--wf-positive) 55%, transparent);
+    animation: bloom 1.6s var(--ease-out-expo) forwards;
+    pointer-events: none;
+  }
+  @keyframes bloom {
+    0% {
+      opacity: 0;
+      transform: scaleX(0.96);
+    }
+    35% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+      transform: scaleX(1.02);
+    }
+  }
+  .liquid-sheen::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(100deg, transparent 20%, rgb(255 255 255 / 0.55) 50%, transparent 80%);
+    transform: translateX(-120%);
+    animation: liquid-sheen 1.4s var(--ease-liquid) 0.9s 1 forwards;
+  }
+  @keyframes liquid-sheen {
+    to {
+      transform: translateX(120%);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .bloom::after,
+    .liquid-sheen::before {
+      animation: none;
+      display: none;
+    }
+  }
+}
+
+/* Wrapped story progress segments */
+@keyframes wrapped-fill {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}

@@ -50,7 +50,7 @@ export async function renderShareCard(opts: { name: string; impact: Impact; dark
   ctx.fillStyle = c.ink;
   ctx.font = '700 52px -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter Variable", system-ui, sans-serif';
   ctx.textBaseline = "middle";
-  ctx.fillText("Windfall", 142, 112);
+  ctx.fillText("Give", 142, 112);
 
   ctx.textBaseline = "alphabetic";
   ctx.font = '500 26px -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter Variable", system-ui, sans-serif';
@@ -118,7 +118,7 @@ export async function renderShareCard(opts: { name: string; impact: Impact; dark
 
   ctx.fillStyle = c.ink3;
   ctx.font = '400 22px -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter Variable", system-ui, sans-serif';
-  ctx.fillText("Demo data — no real money moved. Windfall is a fictional product demo.", 80, H - 70);
+  ctx.fillText("Demo data — no real money moved. Give is a fictional product demo.", 80, H - 70);
 
   return new Promise((resolve, reject) => canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("Couldn’t render image"))), "image/png"));
 }

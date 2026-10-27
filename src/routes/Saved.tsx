@@ -8,6 +8,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { Badge, VerificationBadge } from "@/components/ui/Badge";
 import { ButtonLink, IconButton } from "@/components/ui/Button";
 import { EmptyState, ErrorState, Skeleton } from "@/components/ui/Feedback";
+import { LargeTitle } from "@/components/ui/LargeTitle";
 import { Progress } from "@/components/ui/Progress";
 import { toast } from "@/lib/toast";
 import { spring } from "@/design/motion";
@@ -31,10 +32,8 @@ export default function Saved() {
   });
 
   return (
-    <main className="mx-auto max-w-5xl px-4 pt-8 pb-16 sm:px-6 sm:pt-12">
-      <p className="eyebrow">Saved</p>
-      <h1 className="display mt-4 text-display-lg">Maybe later</h1>
-      <p className="mt-3 text-[16px] text-ink-2">People you wanted to come back to. Press S or tap the bookmark while swiping.</p>
+    <main className="mx-auto max-w-5xl px-4 pb-16 sm:px-6">
+      <LargeTitle title="Maybe later" subtitle="People you wanted to come back to. Press S or tap the bookmark while swiping." />
 
       {q.isPending ? (
         <div className="mt-10 grid gap-4 sm:grid-cols-2">

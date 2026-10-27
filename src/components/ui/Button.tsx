@@ -27,7 +27,7 @@ const sizes: Record<Size, string> = {
 };
 
 const base =
-  "relative inline-flex shrink-0 select-none items-center justify-center font-semibold tracking-[-0.016em] whitespace-nowrap transition-[background-color,filter,box-shadow,color,transform] duration-(--duration-fast) disabled:opacity-40 ring-focus";
+  "press relative inline-flex shrink-0 select-none items-center justify-center font-semibold tracking-[-0.016em] whitespace-nowrap disabled:opacity-40 ring-focus";
 
 /** A router link that looks like a Button (never nest a <button> inside an <a>). */
 export function ButtonLink({ variant = "primary", size = "md", className, ...props }: LinkProps & { variant?: Variant; size?: Size }) {
@@ -95,7 +95,7 @@ export const IconButton = forwardRef<
       whileTap={{ scale: 0.92 }}
       transition={spring.snappy}
       className={cn(
-        "inline-flex items-center justify-center rounded-full text-ink transition-colors duration-(--duration-fast) ring-focus disabled:opacity-40",
+        "press inline-flex items-center justify-center rounded-full text-ink ring-focus disabled:opacity-40",
         tone === "surface" ? "glass-thick shadow-sm hover:brightness-[1.04]" : "hover:bg-fill",
         dims,
         className,

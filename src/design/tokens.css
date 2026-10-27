@@ -1,5 +1,5 @@
 /*
- * Windfall design tokens — the single source for color, type, radii, materials, shadows and motion timing.
+ * Give design tokens — the single source for color, type, radii, materials, shadows and motion timing.
  * Visual language: Apple-like. System greys, one blue accent, green for "cleared", translucent glass
  * materials with saturated blur, generous continuous-feeling radii, and San Francisco / Inter type.
  * Runtime values live on :root (light) and [data-theme="dark"]; Tailwind utilities come from @theme.
@@ -78,10 +78,11 @@
   --wf-on-ink: #000000;
   --wf-scrim: rgb(0 0 0 / 0.55);
 
-  --wf-glass: rgb(30 30 32 / 0.72);
+  --wf-glass: rgb(22 22 24 / 0.7);
   --wf-glass-thick: rgb(28 28 30 / 0.88);
   --wf-glass-thin: rgb(44 44 46 / 0.5);
-  --wf-glass-edge: inset 0 0 0 0.5px rgb(255 255 255 / 0.12), 0 0 0 0.5px rgb(0 0 0 / 0.4);
+  /* OLED dark: pure black canvas, glass that catches a faint highlight along its top edge. */
+  --wf-glass-edge: inset 0 1px 0 rgb(255 255 255 / 0.14), inset 0 0 0 0.5px rgb(255 255 255 / 0.1), 0 0 0 0.5px rgb(0 0 0 / 0.6);
 
   --wf-shadow-hair: 0 0 0 0.5px rgb(255 255 255 / 0.12);
   --wf-shadow-sm: 0 1px 2px rgb(0 0 0 / 0.5);

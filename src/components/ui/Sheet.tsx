@@ -19,6 +19,7 @@ export function Sheet({
   children,
   className,
   hideTitle,
+  side = "center",
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -27,8 +28,11 @@ export function Sheet({
   children: ReactNode;
   className?: string;
   hideTitle?: boolean;
+  /** On desktop: a centered panel (default) or a glass slide-over from the right edge. */
+  side?: "center" | "right";
 }) {
   const desktop = useMediaQuery("(min-width: 640px)");
+  const slide = desktop && side === "right";
   const controls = useDragControls();
 
   return (
@@ -45,18 +49,19 @@ export function Sheet({
                 transition={{ duration: 0.24 }}
               />
             </Dialog.Overlay>
-            <div className="pointer-events-none fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-6">
+            <div className={cn("pointer-events-none fixed inset-0 z-50 flex items-end justify-center", slide ? "sm:items-stretch sm:justify-end sm:p-3" : "sm:items-center sm:p-6")}>
               <Dialog.Content asChild forceMount {...(description ? {} : { "aria-describedby": undefined })}>
                 <m.div
                   className={cn(
                     "glass-thick pointer-events-auto relative w-full max-w-lg shadow-float outline-none",
                     "rounded-t-sheet pb-[max(env(safe-area-inset-bottom),1.25rem)] sm:rounded-sheet sm:pb-6",
                     "max-h-[92dvh] overflow-y-auto overscroll-contain no-scrollbar",
+                    slide && "sm:max-h-none sm:max-w-md sm:rounded-[30px]",
                     className,
                   )}
-                  initial={desktop ? { opacity: 0, scale: 0.96, y: 16 } : { y: "100%" }}
-                  animate={desktop ? { opacity: 1, scale: 1, y: 0 } : { y: 0 }}
-                  exit={desktop ? { opacity: 0, scale: 0.97, y: 8 } : { y: "100%" }}
+                  initial={slide ? { x: "106%" } : desktop ? { opacity: 0, scale: 0.96, y: 16 } : { y: "100%" }}
+                  animate={slide ? { x: 0 } : desktop ? { opacity: 1, scale: 1, y: 0 } : { y: 0 }}
+                  exit={slide ? { x: "106%" } : desktop ? { opacity: 0, scale: 0.97, y: 8 } : { y: "100%" }}
                   transition={spring.sheet}
                   drag={desktop ? false : "y"}
                   dragListener={false}

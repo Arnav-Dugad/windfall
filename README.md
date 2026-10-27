@@ -2,7 +2,7 @@
 
 <img src="public/icon-192.png" width="72" alt="" />
 
-# Windfall
+# Give
 
 **Swipe right to give. Swipe up to clear someone’s debt.**
 
@@ -57,7 +57,33 @@ student loans, rent arrears and the wreckage of brave small businesses.
 
 **Seekers**
 - Six-step request flow with a live card preview; photo resized on-device; simulated Pending → Verified review.
-- Live dashboard, gift wall (anonymous gifts never reveal the Patron), updates and thank-you notes, blur/pause/close controls.
+- Widget dashboard (raised, givers, days live, verification), gift wall (anonymous gifts never reveal the Patron), updates,
+  and **thank-you voice notes and 15-second videos**, auto-captioned on-device while recording.
+
+**Together**
+- **Giving Circles** — friends pool gifts toward one person, with a live shared bar (Firestore listeners) and an invite link.
+- **Match my gift** — after giving, challenge a friend with a link that preselects the same amount for the same person.
+- **Follow** anyone (giving follows automatically) and get a quiet **Activity** inbox: 50% / 75% milestones, updates, thank-yous,
+  cleared debts — with optional browser notifications.
+- **Monthly gifts** to the closest-to-cleared verified story, someone you follow, or your causes. They run when you open Give
+  (no server on the free plan) and can be undone for 2 minutes like any gift.
+- **Wrapped** — a year in review told as full-screen story slides.
+- **Moderation** queue for admins: reports, verification review and fraud signals, enforced by `admins/{uid}` in the rules.
+
+**Intelligence (all on-device)**
+- **For you** deck: learns from your gifts and chosen causes, with an exploration card every fourth swipe ([`shared/rank.ts`](shared/rank.ts)).
+- **Finish a debt** — the people you could clear outright within your budget.
+- **Natural-language search** — “nurses in Kenya under $5K” becomes visible filter chips ([`shared/search.ts`](shared/search.ts)).
+- **Fraud signals** — duplicate stories, reused photos, outlier goals, vague breakdowns ([`shared/fraud.ts`](shared/fraud.ts)).
+- **Translate** stories with Chrome’s built-in on-device Translator API, when available.
+- **Impact narrative** — a warm monthly summary written from your gifts.
+
+**Motion & detail**
+- Give stamp → coin that flies into the progress bar; liquid fill with a bloom at 100%; Apple-shape confetti with depth blur.
+- Depth of field and idle “breathing” behind the top card, squircle corners (`corner-shape`), per-portrait accent colours,
+  iOS large titles that collapse into the nav bar, variable-weight headlines, time-of-day/seasonal backdrops, OLED dark mode,
+  swipe-history drawer (undo any of the last 20), pull-to-refresh with a spinning coin, leaderboard rank-change replay,
+  Wallet-style impact pass, shared-element transitions from the people wall into stories.
 
 ## Architecture
 
@@ -126,4 +152,4 @@ To run against local emulators instead: `npm run dev:emulators` in one terminal 
 
 ---
 
-<sub>Windfall is a design and engineering demo. All people, stories, portraits, gifts and totals are fictional.</sub>
+<sub>Give is a design and engineering demo. All people, stories, portraits, gifts and totals are fictional.</sub>

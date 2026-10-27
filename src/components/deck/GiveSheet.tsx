@@ -1,5 +1,5 @@
 import { useMutation } from "@tanstack/react-query";
-import { Check, Lock } from "lucide-react";
+import { Check, Lock, Users } from "lucide-react";
 import { AnimatePresence, m, useSpring, useTransform } from "motion/react";
 import { Slider, Switch } from "radix-ui";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
@@ -16,6 +16,7 @@ import {
   sliderToCents,
 } from "@shared/money";
 import { fxCoinBurst } from "@/components/effects";
+import { flyCoin } from "@/components/effects/flyCoin";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { Progress } from "@/components/ui/Progress";
@@ -24,6 +25,8 @@ import { Ticker } from "@/components/ui/Ticker";
 import { ease, spring } from "@/design/motion";
 import { announce } from "@/lib/announce";
 import { api, type GiftResult } from "@/lib/api";
+import { shareLink } from "@/lib/share";
+import { createMatch } from "@/lib/social";
 import { cn, haptic } from "@/lib/utils";
 
 type Choice = { kind: "preset"; cents: number } | { kind: "clear" } | { kind: "custom" };
@@ -35,10 +38,22 @@ export function GiveSheet({
   onCancel,
   onGiven,
   onDone,
+  circleId,
+  matchId,
+  context,
+  suggestedCents,
 }: {
   card: RequestCard | null;
   open: boolean;
   anonymousDefault: boolean;
+  /** Give as part of a Giving Circle (counts toward the circle's shared bar). */
+  circleId?: string | null;
+  /** Give in response to a "match my gift" link. */
+  matchId?: string | null;
+  /** Shown above the form, e.g. "Giving with Nurses Circle". */
+  context?: React.ReactNode;
+  /** Preselected amount (e.g. the gift being matched). */
+  suggestedCents?: number;
   /** Closed without giving — the card should return to the deck. */
   onCancel: () => void;
   /** Gift recorded. If it cleared the debt, the parent should celebrate. */
@@ -75,6 +90,10 @@ export function GiveSheet({
         ) : (
           <GiveForm
             card={card}
+            circleId={circleId}
+            matchId={matchId}
+            context={context}
+            suggestedCents={suggestedCents}
             anonymousDefault={anonymousDefault}
             onGiven={(r) => {
               setResult(r);
@@ -90,18 +109,34 @@ function GiveForm({
   card,
   anonymousDefault,
   onGiven,
+  circleId,
+  matchId,
+  context,
+  suggestedCents,
 }: {
   card: RequestCard;
   anonymousDefault: boolean;
+  circleId?: string | null;
+  matchId?: string | null;
+  context?: React.ReactNode;
+  suggestedCents?: number;
   onGiven: (r: GiftResult) => void;
 }) {
   const remaining = remainingCents(card.goalCents, card.fundedCents);
   const presets = PRESET_GIFTS_CENTS.filter((c) => c < remaining);
   const minCents = Math.min(10_000, remaining);
   const [choice, setChoice] = useState<Choice>(() =>
-    presets[0] ? { kind: "preset", cents: presets[0] } : { kind: "clear" },
+    suggestedCents
+      ? suggestedCents >= remaining
+        ? { kind: "clear" }
+        : presets.some((c) => c === suggestedCents)
+          ? { kind: "preset", cents: suggestedCents }
+          : { kind: "custom" }
+      : presets[0]
+        ? { kind: "preset", cents: presets[0] }
+        : { kind: "clear" },
   );
-  const [custom, setCustom] = useState(() => Math.min(250_000, remaining));
+  const [custom, setCustom] = useState(() => Math.min(suggestedCents ?? 250_000, remaining));
   const [anonymous, setAnonymous] = useState(anonymousDefault);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const anonId = useId();
@@ -112,10 +147,13 @@ function GiveForm({
 
   const give = useMutation({
     mutationFn: () =>
-      api.give({ requestId: card.id, amountCents: amount, kind: isClear ? "clear" : "give", anonymous }),
+      api.give({ requestId: card.id, amountCents: amount, kind: isClear ? "clear" : "give", anonymous, circleId, matchId }),
     onSuccess: (r) => {
       const b = buttonRef.current?.getBoundingClientRect();
-      if (b) void fxCoinBurst(b.left + b.width / 2, b.top + b.height / 2, r.cleared ? 1.6 : 1);
+      if (b) {
+        void fxCoinBurst(b.left + b.width / 2, b.top + b.height / 2, r.cleared ? 1.6 : 1);
+        flyCoin({ x: b.left + b.width / 2, y: b.top + b.height / 2 }, { delay: 60 });
+      }
       haptic([10, 30, 14]);
       announce(`You gave ${formatUSD(r.gift.amountCents)} to ${card.firstName}.${r.cleared ? " Their debt is fully cleared." : ""}`);
       onGiven(r);
@@ -124,6 +162,7 @@ function GiveForm({
 
   return (
     <div className="pb-1">
+      {context && <div className="mb-4 flex items-center gap-2 rounded-full bg-accent-soft px-3.5 py-2 text-[13px] font-medium text-accent-ink">{context}</div>}
       <MiniCard card={card} />
 
       <div className="mt-6" role="radiogroup" aria-label="Gift amount">
@@ -305,7 +344,7 @@ export function MiniCard({ card, pct, shared = true }: { card: RequestCard; pct?
       </m.div>
       <div className="min-w-0 flex-1">
         <p className="truncate text-[14px] text-ink-2">{card.headline}</p>
-        <Progress className="mt-2.5" value={pct ?? progress(card.goalCents, card.fundedCents)} />
+        <Progress className="mt-2.5" value={pct ?? progress(card.goalCents, card.fundedCents)} accent={card.accent} coinTarget />
       </div>
     </div>
   );
@@ -337,10 +376,26 @@ function GiftConfirmed({ card, result, onDone }: { card: RequestCard; result: Gi
           <span className="num">{formatUSD(result.request.goalCents)}</span>.
         </p>
       </div>
-      <Button className="mt-7 w-full" size="lg" onClick={onDone}>
-        Keep swiping
-      </Button>
+      <div className="mt-7 grid gap-2.5">
+        <Button className="w-full" size="lg" onClick={onDone}>
+          Keep swiping
+        </Button>
+        {!result.cleared && <MatchButton giftId={result.gift.id} name={card.firstName} />}
+      </div>
       <p className="mt-3 text-center text-[12.5px] text-ink-3">You can undo this gift for 2 minutes — press Z or tap Undo.</p>
     </div>
+  );
+}
+
+/** "Match my gift": a link a friend can open to give the same amount to the same person. */
+function MatchButton({ giftId, name }: { giftId: string; name: string }) {
+  const match = useMutation({
+    mutationFn: () => createMatch(giftId),
+    onSuccess: (id) => void shareLink(`/match/${id}`, "Match my gift on Give", `I just gave to ${name}. Will you match it?`),
+  });
+  return (
+    <Button variant="outline" size="lg" className="w-full" disabled={match.isPending} onClick={() => match.mutate()}>
+      <Users className="size-4" aria-hidden /> {match.isPending ? "Creating link…" : "Challenge a friend to match"}
+    </Button>
   );
 }
