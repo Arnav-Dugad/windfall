@@ -1,0 +1,24 @@
+{
+  "firestore": {
+    "database": "(default)",
+    "location": "asia-south1",
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "auth": {
+    "providers": {
+      "anonymous": true,
+      "emailPassword": true,
+      "googleSignIn": {
+        "oAuthBrandDisplayName": "Windfall",
+        "supportEmail": "arnavrival16@gmail.com"
+      }
+    }
+  },
+  "emulators": {
+    "singleProjectMode": true,
+    "firestore": { "port": 8085 },
+    "auth": { "port": 9099 },
+    "ui": { "enabled": false }
+  }
+}

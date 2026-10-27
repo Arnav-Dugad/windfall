@@ -72,6 +72,7 @@ export interface PublicUser {
   displayName: string;
   avatarSeed: string;
   anonymousByDefault: boolean;
+  photoURL: string | null;
   isDemo: boolean;
 }
 
@@ -93,4 +94,18 @@ export interface SeedSeeker {
   fundedRatio: number;
   postedDaysAgo: number;
   updates: { daysAgo: number; kind: UpdateKind; body: string }[];
+  /** Synthetic (AI-generated) portrait in public/people, e.g. "/people/p042.webp". */
+  photo: string;
+}
+
+/** A fictional Patron for the seed: demo personas can sign in, community Patrons only populate data. */
+export interface SeedPatron {
+  key: string;
+  displayName: string;
+  blurb: string;
+  anonymousByDefault: boolean;
+  photo: string;
+  /** Loginable demo persona id (eleanor / theo / sora) or null for community Patrons. */
+  persona: string | null;
+  history: { gifts: number; typicalCents: number };
 }

@@ -19,8 +19,8 @@ export default defineConfig({
   webServer: process.env.PLAYWRIGHT_BASE_URL
     ? undefined
     : {
-        command: "npm run build && npm run setup:local && npx vite preview --port 4173 --strictPort",
-        url: "http://localhost:4173/api/health",
+        command: "npm run build && npx vite preview --port 4173 --strictPort",
+        url: "http://localhost:4173/",
         reuseExistingServer: !process.env.CI,
         timeout: 240_000,
       },

@@ -5,30 +5,26 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:emulators": "firebase emulators:start --only auth,firestore",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "typecheck": "tsc -b",
     "lint": "oxlint",
     "test": "vitest run",
+    "test:rules": "firebase emulators:exec --only firestore \"vitest run --config vitest.rules.config.ts\"",
     "test:e2e": "playwright test",
     "check": "npm run lint && npm run typecheck && npm run test",
-    "db:generate": "drizzle-kit generate",
-    "db:migrate:local": "wrangler d1 migrations apply windfall-db --local",
-    "db:migrate:remote": "wrangler d1 migrations apply windfall-db --remote",
-    "db:seed:local": "tsx scripts/seed.ts && wrangler d1 execute windfall-db --local --file .wrangler/seed.sql",
-    "db:seed:remote": "tsx scripts/seed.ts && wrangler d1 execute windfall-db --remote --file .wrangler/seed.sql",
-    "setup:local": "npm run db:migrate:local && npm run db:seed:local",
-    "deploy": "npm run build && wrangler deploy",
-    "cf-typegen": "wrangler types"
+    "seed": "tsx scripts/seed-firebase.ts",
+    "deploy:firebase": "firebase deploy --only firestore,auth",
+    "deploy": "npm run build && wrangler deploy"
   },
   "dependencies": {
     "@fontsource-variable/geist": "^5.3.0",
+    "@fontsource-variable/inter": "^5.3.0",
     "@fontsource/instrument-serif": "^5.3.0",
-    "@hono/zod-validator": "^0.9.1",
     "@tanstack/react-query": "^5.105.0",
     "clsx": "^2.1.1",
-    "drizzle-orm": "^0.45.4",
-    "hono": "^4.13.14",
+    "firebase": "^13.1.0",
     "lucide-react": "^1.61.0",
     "motion": "^14.6.0",
     "radix-ui": "^1.8.1",
@@ -39,9 +35,10 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
-    "@cloudflare/vite-plugin": "^1.65.0",
+    "@firebase/rules-unit-testing": "^6.0.0",
     "@playwright/test": "^1.64.1",
     "@tailwindcss/vite": "^4.3.3",
+    "@types/bcryptjs": "^2.4.6",
     "@types/d3-geo": "^3.1.1",
     "@types/node": "^24.19.2",
     "@types/pngjs": "^6.0.5",
@@ -49,11 +46,13 @@
     "@types/react-dom": "^19.3.0",
     "@types/topojson-client": "^3.1.5",
     "@vitejs/plugin-react": "^6.1.2",
+    "bcryptjs": "^3.0.3",
     "d3-geo": "^3.1.1",
-    "drizzle-kit": "^0.31.11",
+    "firebase-tools": "^15.34.1",
     "gifenc": "^1.0.3",
     "oxlint": "^1.88.0",
     "pngjs": "^7.0.0",
+    "sharp": "^0.35.5",
     "tailwindcss": "^4.3.3",
     "topojson-client": "^3.1.0",
     "tsx": "^4.23.15",
@@ -66,5 +65,5 @@
   "engines": {
     "node": ">=22.13"
   },
-  "description": "Swipe-to-give demo on Cloudflare Workers, D1 and R2. All data fictional."
+  "description": "Swipe-to-give demo: React SPA on Cloudflare, Firebase Auth + Firestore. All data fictional."
 }

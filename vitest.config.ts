@@ -1,7 +1,7 @@
 import { fileURLToPath, URL } from "node:url";
 import { defineConfig } from "vitest/config";
 
-// Unit tests run in Node (no Workers runtime needed): pure logic + the ledger SQL against node:sqlite.
+// Unit tests for pure logic run in Node; firestore.rules is tested separately against the emulator.
 export default defineConfig({
   resolve: {
     alias: {
@@ -11,6 +11,8 @@ export default defineConfig({
   },
   test: {
     include: ["tests/**/*.test.ts"],
+    // Security-rules tests need the Firestore emulator: npm run test:rules
+    exclude: ["tests/rules/**", "node_modules/**"],
     environment: "node",
   },
 });

@@ -1,0 +1,255 @@
+rules_version = '2';
+
+// Windfall — Firestore security rules.
+//
+// There is no server: the gift ledger is enforced here. A gift is one client transaction that writes
+//   gifts/{g}                 private record (Patron only)
+//   requests/{r}              fundedCents += amount, giftCount += 1, lastGiftId = g
+//   requests/{r}/wall/{g}     public "gift wall" entry with no Patron id (anonymity)
+//   patronStats/{uid}         leaderboard totals
+//   stats/global              platform totals
+// and every write checks the others with get()/getAfter(), so totals can't drift, a request can't be
+// over-funded, and an undo applies exactly once. All money is integer cents.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---- helpers -------------------------------------------------------------------------------
+    function signedIn() { return request.auth != null; }
+    function isSeeder() { return signedIn() && request.auth.uid == 'windfall-seeder'; }
+    function giftPath(id) { return /databases/$(database)/documents/gifts/$(id); }
+    function reqPath(id) { return /databases/$(database)/documents/requests/$(id); }
+    function str(v, min, max) { return v is string && v.size() >= min && v.size() <= max; }
+    function optStr(v, max) { return v == null || (v is string && v.size() <= max); }
+    function categories() { return ['medical', 'student_loans', 'rent', 'small_business', 'emergency']; }
+    function isRole(role) { return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == role; }
+
+    // A gift being created in this same batch (didn't exist before, exists after).
+    function newGift(id) { return !exists(giftPath(id)) && existsAfter(giftPath(id)); }
+    // A gift being reversed in this same batch (settled before, reversed after).
+    function reversedGift(id) {
+      return exists(giftPath(id)) && get(giftPath(id)).data.status == 'settled'
+        && getAfter(giftPath(id)).data.status == 'reversed';
+    }
+
+    function breakdownOk(b) {
+      return b is list && b.size() >= 1 && b.size() <= 6
+        && b[0].amountCents is int && b[0].amountCents >= 100 && str(b[0].label, 1, 60);
+    }
+    function breakdownSum(b) {
+      return (b.size() > 0 ? b[0].amountCents : 0) + (b.size() > 1 ? b[1].amountCents : 0)
+        + (b.size() > 2 ? b[2].amountCents : 0) + (b.size() > 3 ? b[3].amountCents : 0)
+        + (b.size() > 4 ? b[4].amountCents : 0) + (b.size() > 5 ? b[5].amountCents : 0);
+    }
+
+    // ---- public metadata ----------------------------------------------------------------------
+    match /meta/{id} {
+      allow read: if true;
+      allow write: if isSeeder();
+    }
+
+    // ---- users --------------------------------------------------------------------------------
+    match /users/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || isSeeder());
+      allow create: if isSeeder() || (signedIn() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['role', 'displayName', 'anonymousByDefault', 'photoURL', 'isDemo', 'createdAt'])
+        && request.resource.data.role in ['patron', 'seeker']
+        && str(request.resource.data.displayName, 1, 40)
+        && request.resource.data.anonymousByDefault is bool
+        && request.resource.data.isDemo == false
+        && request.resource.data.createdAt == request.time);
+      // Role can't change after onboarding; profile fields can.
+      allow update: if isSeeder() || (signedIn() && request.auth.uid == uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName', 'anonymousByDefault', 'photoURL'])
+        && str(request.resource.data.displayName, 1, 40)
+        && request.resource.data.anonymousByDefault is bool);
+      allow delete: if isSeeder();
+
+      match /swipes/{requestId} {
+        allow read, delete: if signedIn() && (request.auth.uid == uid || isSeeder());
+        allow create, update: if isSeeder() || (signedIn() && request.auth.uid == uid
+          && request.resource.data.keys().hasOnly(['action', 'createdAt'])
+          && request.resource.data.action in ['pass', 'save']
+          && request.resource.data.createdAt == request.time);
+      }
+    }
+
+    // ---- requests (a Seeker's ask) -------------------------------------------------------------
+    match /requests/{rid} {
+      allow read: if true;
+      allow delete: if isSeeder();
+
+      allow create: if isSeeder() || (signedIn() && isRole('seeker') && validNewRequest(request.resource.data));
+
+      allow update: if isSeeder() || (signedIn() && (
+        fundingUpdate(rid, request.resource.data, resource.data)
+        || reversalUpdate(rid, request.resource.data, resource.data)
+        || ownerEdit(request.resource.data, resource.data)));
+
+      function validNewRequest(d) {
+        return d.keys().hasOnly(['seekerId', 'firstName', 'age', 'city', 'country', 'countryCode', 'lat', 'lng', 'category',
+            'headline', 'story', 'breakdown', 'goalCents', 'fundedCents', 'giftCount', 'status', 'verification',
+            'verificationRequestedAt', 'avatarSeed', 'photoUrl', 'blurPhoto', 'isDemo', 'createdAt', 'fundedAt', 'lastGiftId'])
+          && d.seekerId == request.auth.uid
+          && str(d.firstName, 1, 30) && str(d.headline, 8, 80) && str(d.story, 80, 2000)
+          && str(d.city, 1, 60) && str(d.country, 2, 60) && str(d.countryCode, 2, 2)
+          && (d.age == null || (d.age is int && d.age >= 18 && d.age <= 110))
+          && d.category in categories()
+          && breakdownOk(d.breakdown) && d.goalCents == breakdownSum(d.breakdown) && d.goalCents <= 50000000
+          && d.fundedCents == 0 && d.giftCount == 0 && d.status == 'active' && d.lastGiftId == null && d.fundedAt == null
+          && (d.verification == 'unverified' || (d.verification == 'pending' && d.verificationRequestedAt == request.time))
+          && optStr(d.photoUrl, 160000) && d.blurPhoto is bool && d.isDemo == true
+          && d.createdAt == request.time;
+      }
+
+      // Patron funding: exactly the new gift's amount, never past the goal, only while active.
+      function fundingUpdate(rid, d, o) {
+        let g = getAfter(giftPath(d.lastGiftId)).data;
+        return d.diff(o).affectedKeys().hasOnly(['fundedCents', 'giftCount', 'status', 'fundedAt', 'lastGiftId'])
+          && o.status == 'active' && newGift(d.lastGiftId)
+          && g.requestId == rid && g.patronId == request.auth.uid
+          && d.fundedCents == o.fundedCents + g.amountCents && d.fundedCents <= o.goalCents
+          && d.giftCount == o.giftCount + 1
+          && (d.fundedCents == o.goalCents
+              ? (d.status == 'funded' && d.fundedAt == request.time)
+              : (d.status == o.status && d.fundedAt == o.fundedAt));
+      }
+
+      // Undo: subtract a gift that flips settled → reversed in this batch (so it can only happen once).
+      function reversalUpdate(rid, d, o) {
+        let g = getAfter(giftPath(d.lastGiftId)).data;
+        return d.diff(o).affectedKeys().hasOnly(['fundedCents', 'giftCount', 'status', 'fundedAt', 'lastGiftId'])
+          && reversedGift(d.lastGiftId) && g.requestId == rid && g.patronId == request.auth.uid
+          && d.fundedCents == o.fundedCents - g.amountCents && d.giftCount == o.giftCount - 1
+          && (o.status == 'funded' ? (d.status == 'active' && d.fundedAt == null) : (d.status == o.status && d.fundedAt == o.fundedAt));
+      }
+
+      // Seeker dignity controls + mock verification.
+      function ownerEdit(d, o) {
+        return o.seekerId == request.auth.uid
+          && d.diff(o).affectedKeys().hasOnly(['status', 'blurPhoto', 'verification', 'verificationRequestedAt', 'photoUrl'])
+          && d.blurPhoto is bool && optStr(d.photoUrl, 160000)
+          && (d.status == o.status
+              || (o.status in ['active', 'paused'] && d.status in ['active', 'paused', 'closed']))
+          && (d.verification == o.verification
+              || (o.verification == 'unverified' && d.verification == 'pending' && d.verificationRequestedAt == request.time)
+              // Review is simulated: "pending" may become "verified" 20s after the document was submitted.
+              || (o.verification == 'pending' && d.verification == 'verified'
+                  && request.time > o.verificationRequestedAt + duration.value(20, 's')));
+      }
+
+      // Public gift wall: amounts and (non-anonymous) names, never Patron ids.
+      match /wall/{giftId} {
+        allow read: if true;
+        allow delete: if isSeeder();
+        allow create: if isSeeder() || (signedIn() && wallCreate(rid, giftId, request.resource.data));
+        allow update: if isSeeder() || (signedIn()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
+          && request.resource.data.status == 'reversed' && reversedGift(giftId)
+          && get(giftPath(giftId)).data.patronId == request.auth.uid);
+
+        function wallCreate(rid, giftId, w) {
+          let g = getAfter(giftPath(giftId)).data;
+          return newGift(giftId) && g.patronId == request.auth.uid && g.requestId == rid
+            && w.keys().hasOnly(['amountCents', 'kind', 'fromName', 'fromAvatar', 'status', 'createdAt'])
+            && w.amountCents == g.amountCents && w.kind == g.kind && w.status == 'settled'
+            && w.createdAt == request.time
+            && (g.anonymous ? (w.fromName == null && w.fromAvatar == null) : (str(w.fromName, 1, 40) && optStr(w.fromAvatar, 300)));
+        }
+      }
+
+      match /updates/{updateId} {
+        allow read: if true;
+        allow delete: if isSeeder();
+        allow create: if isSeeder() || (signedIn()
+          && get(reqPath(rid)).data.seekerId == request.auth.uid
+          && request.resource.data.keys().hasOnly(['kind', 'body', 'createdAt'])
+          && request.resource.data.kind in ['update', 'thanks']
+          && str(request.resource.data.body, 4, 600)
+          && request.resource.data.createdAt == request.time);
+      }
+    }
+
+    // ---- gifts (private ledger rows) -------------------------------------------------------------
+    match /gifts/{giftId} {
+      allow read: if signedIn() && (resource.data.patronId == request.auth.uid || isSeeder());
+      allow delete: if isSeeder();
+
+      allow create: if isSeeder() || (signedIn() && validNewGift(giftId, request.resource.data));
+      // Undo within 2 minutes, once, by the giver.
+      allow update: if signedIn()
+        && resource.data.patronId == request.auth.uid && resource.data.status == 'settled'
+        && request.time < resource.data.createdAt + duration.value(2, 'm')
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'reversedAt'])
+        && request.resource.data.status == 'reversed' && request.resource.data.reversedAt == request.time
+        && getAfter(reqPath(resource.data.requestId)).data.lastGiftId == giftId;
+
+      function validNewGift(giftId, g) {
+        let before = get(reqPath(g.requestId)).data;
+        let after = getAfter(reqPath(g.requestId)).data;
+        return g.keys().hasOnly(['patronId', 'requestId', 'seekerId', 'amountCents', 'kind', 'anonymous', 'status',
+            'createdAt', 'requestName', 'category', 'country', 'countryCode', 'city', 'lat', 'lng', 'photoUrl', 'avatarSeed'])
+          && g.patronId == request.auth.uid && isRole('patron')
+          && g.amountCents is int && g.amountCents >= 100 && g.amountCents <= 100000000
+          && g.kind in ['give', 'clear'] && g.anonymous is bool && g.status == 'settled'
+          && g.createdAt == request.time
+          && g.seekerId == before.seekerId && g.requestName == before.firstName
+          && before.status == 'active'
+          && after.lastGiftId == giftId && after.fundedCents == before.fundedCents + g.amountCents
+          && after.fundedCents <= before.goalCents;
+      }
+    }
+
+    // ---- leaderboard -----------------------------------------------------------------------------
+    match /patronStats/{uid} {
+      allow read: if true;
+      allow delete: if isSeeder();
+      allow create, update: if isSeeder() || (signedIn() && request.auth.uid == uid && (
+        statsForGift(uid, request.resource.data, resource) || profileOnly(request.resource.data, resource)));
+
+      function prev(r, field) { return r == null ? 0 : r.data[field]; }
+
+      function statsForGift(uid, d, r) {
+        let g = getAfter(giftPath(d.lastGiftId)).data;
+        return g.patronId == uid && d.lastGiftAt == request.time
+          // A light per-Patron rate limit: at most one gift per second.
+          && (r == null || request.time > r.data.lastGiftAt + duration.value(1, 's'))
+          && ((newGift(d.lastGiftId)
+                && d.totalCents == prev(r, 'totalCents') + g.amountCents && d.giftCount == prev(r, 'giftCount') + 1)
+              || (reversedGift(d.lastGiftId)
+                && d.totalCents == prev(r, 'totalCents') - g.amountCents && d.giftCount == prev(r, 'giftCount') - 1));
+      }
+
+      function profileOnly(d, r) {
+        return r != null && d.diff(r.data).affectedKeys().hasOnly(['displayName', 'avatar', 'anonymous'])
+          && optStr(d.displayName, 40) && d.anonymous is bool;
+      }
+    }
+
+    // ---- platform totals -------------------------------------------------------------------------
+    match /stats/{id} {
+      allow read: if true;
+      allow write: if isSeeder() || (signedIn() && id == 'global' && globalForGift(request.resource.data, resource.data));
+
+      function globalForGift(d, o) {
+        let g = getAfter(giftPath(d.lastGiftId)).data;
+        return g.patronId == request.auth.uid
+          && d.diff(o).affectedKeys().hasOnly(['totalCents', 'giftCount', 'debtsCleared', 'lastGiftId'])
+          && ((newGift(d.lastGiftId) && d.totalCents == o.totalCents + g.amountCents && d.giftCount == o.giftCount + 1)
+              || (reversedGift(d.lastGiftId) && d.totalCents == o.totalCents - g.amountCents && d.giftCount == o.giftCount - 1))
+          && d.debtsCleared >= o.debtsCleared - 1 && d.debtsCleared <= o.debtsCleared + 1;
+      }
+    }
+
+    // ---- trust & safety ---------------------------------------------------------------------------
+    match /reports/{id} {
+      allow read, delete: if isSeeder();
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['requestId', 'reporterId', 'reason', 'note', 'createdAt'])
+        && request.resource.data.reporterId == request.auth.uid
+        && request.resource.data.reason in ['misleading', 'duplicate', 'offensive', 'privacy', 'other']
+        && optStr(request.resource.data.note, 500)
+        && request.resource.data.createdAt == request.time;
+    }
+  }
+}

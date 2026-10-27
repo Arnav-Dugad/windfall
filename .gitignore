@@ -37,3 +37,12 @@ playwright-report/
 blob-report/
 coverage/
 *.tsbuildinfo
+
+# downloaded source portraits (processed copies live in public/people)
+.cache/
+.cache-faces.log
+
+# Firebase seeder credentials (never commit)
+.seed.env
+firestore-debug.log
+ui-debug.log

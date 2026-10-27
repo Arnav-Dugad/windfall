@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { deckQuerySchema, giftSchema, newRequestSchema, storyStepSchema } from "../shared/schemas";
-import { decodeSession, encodeSession } from "../worker/lib/session";
 
 describe("schemas", () => {
   it("validates gifts", () => {
@@ -49,17 +48,5 @@ describe("schemas", () => {
         breakdown: [],
       }).success,
     ).toBe(false);
-  });
-});
-
-describe("session cookie payload", () => {
-  it("round-trips and expires", () => {
-    const raw = encodeSession({ userId: "usr_demo_maya", role: "seeker" }, 2_000);
-    expect(decodeSession(raw, 1_000)).toEqual({ userId: "usr_demo_maya", role: "seeker" });
-    expect(decodeSession(raw, 3_000)).toBeNull();
-  });
-  it("rejects tampered roles", () => {
-    expect(decodeSession("usr_x.admin.99999999999999", 0)).toBeNull();
-    expect(decodeSession("garbage", 0)).toBeNull();
   });
 });

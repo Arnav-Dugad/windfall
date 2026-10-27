@@ -10,6 +10,7 @@ import { homeFor, loadStory } from "@/lib/routes";
 // Route-level code splitting (the signed-in shell too, so the landing page stays light).
 const AppShell = lazy(() => import("@/components/layout/AppShell"));
 const Login = lazy(() => import("@/routes/Login"));
+const Welcome = lazy(() => import("@/routes/Welcome"));
 const Discover = lazy(() => import("@/routes/Discover"));
 const Story = lazy(loadStory);
 const StoryOverlay = lazy(() => loadStory().then((m) => ({ default: m.StoryOverlay })));
@@ -22,9 +23,10 @@ const ManageRequest = lazy(() => import("@/routes/seeker/Manage"));
 const NotFound = lazy(() => import("@/routes/NotFound"));
 
 function RequireRole({ role, children }: { role: "patron" | "seeker"; children: ReactNode }) {
-  const { data, isPending } = useMe();
+  const { data, isPending, needsOnboarding } = useMe();
   const location = useLocation();
   if (isPending) return <PageFallback />;
+  if (needsOnboarding) return <Navigate to={`/welcome?next=${encodeURIComponent(location.pathname)}`} replace />;
   if (!data?.user) return <Navigate to={`/login?role=${role}&next=${encodeURIComponent(location.pathname)}`} replace />;
   if (data.user.role !== role) return <Navigate to={homeFor(data.user.role)} replace />;
   return <>{children}</>;
@@ -40,6 +42,7 @@ export function App() {
         <Routes location={background ?? location}>
           <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/welcome" element={<Welcome />} />
           <Route element={<AppShell />}>
             <Route
               path="/discover"

@@ -1,18 +1,25 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { useMotionValue, useSpring } from "motion/react";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
-import { api } from "./api";
+import { getSession, subscribeSession } from "./session";
 
+/** Current Windfall user from Firebase Auth + their live profile (same shape the screens always used). */
 export function useMe() {
-  return useQuery({ queryKey: ["me"], queryFn: api.me, staleTime: 60_000 });
+  const s = useSyncExternalStore(subscribeSession, getSession, getSession);
+  return {
+    data: { user: s.user },
+    isPending: s.status === "loading",
+    needsOnboarding: s.needsOnboarding,
+    firebaseUser: s.firebaseUser,
+  };
 }
 
 export function useSignOut() {
   const qc = useQueryClient();
   return useCallback(async () => {
+    const { api } = await import("./api");
     await api.logout();
     qc.clear();
-    qc.setQueryData(["me"], { user: null });
   }, [qc]);
 }
 

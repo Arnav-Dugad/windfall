@@ -1,4 +1,3 @@
-import { cloudflare } from "@cloudflare/vite-plugin";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { fileURLToPath, URL } from "node:url";
@@ -29,9 +28,9 @@ function loadAppAfterShellPaint(): Plugin {
   };
 }
 
-// https://vite.dev/config/ — the Cloudflare plugin runs the Worker (API) in workerd during dev and build.
+// https://vite.dev/config/ — a static SPA: Cloudflare hosts dist/, Firebase provides auth + data.
 export default defineConfig({
-  plugins: [react(), tailwindcss(), cloudflare(), loadAppAfterShellPaint()],
+  plugins: [react(), tailwindcss(), loadAppAfterShellPaint()],
   resolve: {
     alias: {
       "@": fileURLToPath(new URL("./src", import.meta.url)),
@@ -40,6 +39,7 @@ export default defineConfig({
   },
   build: {
     target: "es2022",
+    chunkSizeWarningLimit: 700,
     cssMinify: true,
   },
 });

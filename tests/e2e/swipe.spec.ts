@@ -60,7 +60,7 @@ test("impact dashboard shows totals", async ({ page }) => {
 
 test("seeker demo login lands on the request dashboard", async ({ page }) => {
   await page.goto("/login?role=seeker");
-  await page.getByRole("button", { name: /^Maya/ }).click();
+  await page.getByRole("button", { name: /part-funded/ }).click();
   await expect(page).toHaveURL(/\/seeker$/);
   await expect(page.getByRole("link", { name: /Manage/ }).first()).toBeVisible();
 });
