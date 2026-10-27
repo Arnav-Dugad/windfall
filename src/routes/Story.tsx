@@ -122,7 +122,7 @@ function StoryContent({ story }: { story: RequestDetail }) {
       <m.div
         layoutId={`art-${story.id}`}
         transition={spring.layout}
-        className="relative aspect-[4/3] w-full overflow-hidden rounded-card sm:aspect-[16/9]"
+        className="relative mx-auto aspect-[4/5] max-h-[68vh] w-full overflow-hidden rounded-card shadow-card sm:aspect-[3/2] sm:max-h-none [&_img]:object-[50%_28%]"
       >
         <Avatar seed={story.avatarSeed} name={story.firstName} photoUrl={story.photoUrl} blur={story.blurPhoto} shape="card" className="absolute inset-0" />
       </m.div>
@@ -131,7 +131,7 @@ function StoryContent({ story }: { story: RequestDetail }) {
         <div className="flex flex-wrap items-center gap-2">
           <Badge>{CATEGORY_LABELS[story.category]}</Badge>
           <VerificationBadge status={story.verification} />
-          {story.status === "funded" && <Badge tone="sage">Fully funded</Badge>}
+          {story.status === "funded" && <Badge tone="positive">Fully funded</Badge>}
           {story.status === "paused" && <Badge>Paused by {story.firstName}</Badge>}
           {story.isDemo && <DemoBadge label="Demo — fictional person" />}
         </div>
@@ -162,7 +162,7 @@ function StoryContent({ story }: { story: RequestDetail }) {
         {canGive && (
           <div className="mt-6 flex flex-col gap-3 sm:flex-row">
             {isPatron ? (
-              <Button variant="gold" size="lg" magnetic className="flex-1" onClick={() => setGiving(true)}>
+              <Button variant="accent" size="lg" magnetic className="flex-1" onClick={() => setGiving(true)}>
                 <HandCoins className="size-5" aria-hidden /> Give to {story.firstName}
               </Button>
             ) : (
@@ -195,7 +195,7 @@ function StoryContent({ story }: { story: RequestDetail }) {
             <li key={b.label} className="flex items-center gap-4 px-5 py-4">
               <span className="min-w-0 flex-1 text-[15px]">{b.label}</span>
               <span className="hidden h-1 w-24 overflow-hidden rounded-full bg-line sm:block" aria-hidden>
-                <span className="block h-full rounded-full bg-gold/70" style={{ width: `${(b.amountCents / story.goalCents) * 100}%` }} />
+                <span className="block h-full rounded-full bg-accent/70" style={{ width: `${(b.amountCents / story.goalCents) * 100}%` }} />
               </span>
               <span className="num w-24 text-right text-[15px] font-medium">{formatUSD(b.amountCents)}</span>
             </li>
@@ -212,7 +212,7 @@ function StoryContent({ story }: { story: RequestDetail }) {
           Verification
         </h2>
         <div className="mt-4 flex gap-4 rounded-tile bg-surface-2 p-5">
-          <BadgeCheck className={cn("mt-0.5 size-5 shrink-0", story.verification === "verified" ? "text-sage-ink" : "text-ink-3")} aria-hidden />
+          <BadgeCheck className={cn("mt-0.5 size-5 shrink-0", story.verification === "verified" ? "text-positive-ink" : "text-ink-3")} aria-hidden />
           <p className="text-[14.5px] leading-relaxed text-ink-2">
             {story.verification === "verified"
               ? `${story.firstName} uploaded statements for this debt and they were reviewed. In this demo, review is simulated.`
@@ -231,7 +231,7 @@ function StoryContent({ story }: { story: RequestDetail }) {
           <ol className="relative mt-5 space-y-6 border-l border-line pl-6">
             {story.updates.map((u) => (
               <li key={u.id} className="relative">
-                <span className="absolute top-0.5 -left-[35px] grid size-5 place-items-center rounded-full bg-canvas text-gold-ink">
+                <span className="absolute top-0.5 -left-[35px] grid size-5 place-items-center rounded-full bg-canvas text-accent-ink">
                   {u.kind === "thanks" ? <MessageCircleHeart className="size-4" aria-hidden /> : <Newspaper className="size-4" aria-hidden />}
                 </span>
                 <p className="text-[12.5px] text-ink-3">
@@ -289,7 +289,7 @@ function ReportSheet({ open, onOpenChange, requestId, name }: { open: boolean; o
     onSuccess: () => {
       onOpenChange(false);
       setNote("");
-      toast({ message: "Thanks — our trust & safety team will take a look.", tone: "sage" });
+      toast({ message: "Thanks — our trust & safety team will take a look.", tone: "positive" });
     },
   });
   return (

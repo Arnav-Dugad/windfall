@@ -228,14 +228,14 @@ function DeckCard({
           animate={returningFrom ? { x: 0, y: 0 } : undefined}
           transition={spring.snapBack}
         >
-          <SwipeCard card={card} interactive={interactive} />
+          <SwipeCard card={card} interactive={interactive} priority={depth < 2} />
           {isTop && (
             <>
-              <Stamp label="Give" tone="gold" opacity={giveOpacity} scale={giveScale} className="top-8 left-6 -rotate-12" />
-              <Stamp label="Pass" tone="ink" opacity={passOpacity} scale={passScale} className="top-8 right-6 rotate-12" />
+              <Stamp label="Give" tone="accent" opacity={giveOpacity} scale={giveScale} className="top-16 left-5 -rotate-[10deg]" />
+              <Stamp label="Pass" tone="ink" opacity={passOpacity} scale={passScale} className="top-16 right-5 rotate-[10deg]" />
               <Stamp
                 label="Clear it"
-                tone="sage"
+                tone="positive"
                 opacity={clearOpacity}
                 scale={clearScale}
                 className="bottom-[34%] left-1/2 -translate-x-1/2"
@@ -256,22 +256,22 @@ function Stamp({
   className,
 }: {
   label: string;
-  tone: "gold" | "ink" | "sage";
+  tone: "accent" | "ink" | "positive";
   opacity: MotionValue<number>;
   scale: MotionValue<number>;
   className?: string;
 }) {
   const tones = {
-    gold: "text-gold-ink border-gold bg-gold-soft/85",
-    ink: "text-ink border-ink bg-surface/85",
-    sage: "text-sage-ink border-sage bg-sage-soft/85",
+    accent: "bg-accent text-white shadow-[0_8px_30px_-6px_rgb(0_113_227/0.7)]",
+    ink: "bg-white/90 text-[#1d1d1f] shadow-[0_8px_30px_-6px_rgb(0_0_0/0.45)]",
+    positive: "bg-positive text-white shadow-[0_8px_30px_-6px_rgb(52_199_89/0.7)]",
   };
   return (
     <div className={cn("pointer-events-none absolute", className)} aria-hidden>
       <m.div
         style={{ opacity, scale }}
         className={cn(
-          "rounded-[14px] border-[2.5px] px-4 py-1.5 text-[22px] font-semibold tracking-[0.12em] uppercase backdrop-blur-sm",
+          "rounded-full px-5 py-2 text-[19px] font-bold tracking-[-0.01em] backdrop-blur-md",
           tones[tone],
         )}
       >

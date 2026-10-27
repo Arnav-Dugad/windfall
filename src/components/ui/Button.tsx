@@ -5,26 +5,29 @@ import { spring } from "@/design/motion";
 import { useMagnetic } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
 
-type Variant = "primary" | "gold" | "sage" | "outline" | "ghost" | "quiet";
+type Variant = "primary" | "ink" | "accent" | "positive" | "outline" | "ghost" | "quiet" | "glass";
 type Size = "sm" | "md" | "lg";
 
+// Apple-style pills: filled blue for the main action, tinted grey for secondary, glass over imagery.
 const variants: Record<Variant, string> = {
-  primary: "bg-ink text-on-ink shadow-sm hover:bg-ink/90",
-  gold: "bg-gold text-[#16120b] shadow-glow hover:brightness-[1.04]",
-  sage: "bg-sage text-[#0f1a12] hover:brightness-[1.04]",
-  outline: "bg-transparent text-ink shadow-[inset_0_0_0_1px_var(--wf-line-strong)] hover:bg-surface-2",
-  ghost: "bg-transparent text-ink hover:bg-surface-2",
-  quiet: "bg-surface-2 text-ink hover:bg-line-strong",
+  primary: "bg-accent text-on-accent hover:bg-accent-hover",
+  ink: "bg-ink text-on-ink hover:bg-ink/85",
+  accent: "bg-accent text-on-accent shadow-glow hover:bg-accent-hover",
+  positive: "bg-positive text-white hover:brightness-[1.05]",
+  outline: "bg-fill text-ink hover:bg-fill-2",
+  ghost: "bg-transparent text-accent-ink hover:bg-fill",
+  quiet: "bg-fill text-ink hover:bg-fill-2",
+  glass: "glass text-ink hover:brightness-[1.03]",
 };
 
 const sizes: Record<Size, string> = {
-  sm: "h-9 px-4 text-sm gap-1.5 rounded-full",
+  sm: "h-9 px-4 text-[14px] gap-1.5 rounded-full",
   md: "h-11 px-5 text-[15px] gap-2 rounded-full",
-  lg: "h-14 px-7 text-base gap-2.5 rounded-full",
+  lg: "h-[52px] px-7 text-[17px] gap-2.5 rounded-full",
 };
 
 const base =
-  "relative inline-flex shrink-0 select-none items-center justify-center font-medium tracking-[-0.01em] whitespace-nowrap transition-[background-color,filter,box-shadow,color] duration-(--duration-fast) disabled:opacity-45 ring-focus";
+  "relative inline-flex shrink-0 select-none items-center justify-center font-semibold tracking-[-0.016em] whitespace-nowrap transition-[background-color,filter,box-shadow,color,transform] duration-(--duration-fast) disabled:opacity-40 ring-focus";
 
 /** A router link that looks like a Button (never nest a <button> inside an <a>). */
 export function ButtonLink({ variant = "primary", size = "md", className, ...props }: LinkProps & { variant?: Variant; size?: Size }) {
@@ -93,7 +96,7 @@ export const IconButton = forwardRef<
       transition={spring.snappy}
       className={cn(
         "inline-flex items-center justify-center rounded-full text-ink transition-colors duration-(--duration-fast) ring-focus disabled:opacity-40",
-        tone === "surface" ? "bg-surface shadow-sm hairline hover:bg-surface-2" : "hover:bg-surface-2",
+        tone === "surface" ? "glass-thick shadow-sm hover:brightness-[1.04]" : "hover:bg-fill",
         dims,
         className,
       )}

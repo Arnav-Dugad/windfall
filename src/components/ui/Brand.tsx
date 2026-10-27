@@ -6,14 +6,20 @@ import { useTheme } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
 import { IconButton } from "./Button";
 
-/** The Windfall mark: a single gold coin caught mid-fall. */
+/** The Windfall mark: an app-icon squircle with a coin caught mid-fall. */
 export function Mark({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 32 32" className={cn("size-7", className)} aria-hidden>
-      <circle cx="16" cy="16" r="15" fill="var(--wf-ink)" />
-      <circle cx="16" cy="18.5" r="6.5" fill="var(--wf-gold)" />
-      <path d="M16 4.5v6" stroke="var(--wf-gold)" strokeWidth="1.6" strokeLinecap="round" opacity="0.65" />
-      <path d="M11.5 7.5v3.5M20.5 7.5v3.5" stroke="var(--wf-gold)" strokeWidth="1.2" strokeLinecap="round" opacity="0.35" />
+      <defs>
+        <linearGradient id="wf-mark" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#2997ff" />
+          <stop offset="1" stopColor="#6e4cf5" />
+        </linearGradient>
+      </defs>
+      <path d="M16 1c9.9 0 15 5.1 15 15s-5.1 15-15 15S1 25.9 1 16 6.1 1 16 1Z" fill="url(#wf-mark)" />
+      <circle cx="16" cy="18.5" r="6.2" fill="#fff" />
+      <path d="M16 5.5v5.5" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" opacity="0.8" />
+      <path d="M11.5 8v3M20.5 8v3" stroke="#fff" strokeWidth="1.4" strokeLinecap="round" opacity="0.45" />
     </svg>
   );
 }
@@ -21,8 +27,8 @@ export function Mark({ className }: { className?: string }) {
 export function Logo({ to = "/", className }: { to?: string; className?: string }) {
   return (
     <Link to={to} className={cn("group inline-flex items-center gap-2.5 rounded-full ring-focus", className)} aria-label="Windfall home">
-      <Mark className="transition-transform duration-(--duration-slow) ease-(--ease-out-expo) group-hover:-rotate-12" />
-      <span className="display text-[1.6rem] leading-none tracking-[-0.01em]">Windfall</span>
+      <Mark className="transition-transform duration-(--duration-slow) ease-(--ease-out-expo) group-hover:-rotate-6 group-hover:scale-105" />
+      <span className="display text-[19px] leading-none tracking-[-0.02em]">Windfall</span>
     </Link>
   );
 }

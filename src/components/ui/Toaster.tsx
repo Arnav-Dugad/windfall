@@ -7,8 +7,8 @@ import { cn } from "@/lib/utils";
 
 const dot: Record<NonNullable<Toast["tone"]>, string> = {
   neutral: "bg-ink-3",
-  gold: "bg-gold",
-  sage: "bg-sage",
+  accent: "bg-accent",
+  positive: "bg-positive",
   danger: "bg-danger",
 };
 
@@ -26,7 +26,7 @@ export function Toaster() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 8, scale: 0.98 }}
             transition={spring.snappy}
-            className="pointer-events-auto flex min-h-12 max-w-md items-center gap-3 rounded-full bg-ink py-2 pr-2 pl-5 text-[14px] text-on-ink shadow-float"
+            className="glass-thick pointer-events-auto flex min-h-12 max-w-md items-center gap-3 rounded-full py-2 pr-2 pl-5 text-[14px] font-medium text-ink shadow-float"
           >
             <span className={cn("size-1.5 shrink-0 rounded-full", dot[t.tone ?? "neutral"])} aria-hidden />
             <span className="py-1">{t.message}</span>
@@ -36,7 +36,7 @@ export function Toaster() {
                   t.action!.onClick();
                   dismissToast(t.id);
                 }}
-                className="ml-1 h-8 rounded-full bg-on-ink/12 px-3.5 text-[13px] font-medium text-on-ink transition-colors hover:bg-on-ink/20 ring-focus"
+                className="ml-1 h-8 rounded-full bg-accent px-3.5 text-[13px] font-semibold text-white transition-colors hover:bg-accent-hover ring-focus"
               >
                 {t.action.label}
               </button>

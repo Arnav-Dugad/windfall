@@ -63,7 +63,7 @@ export function ErrorState({ error, onRetry, className }: { error: unknown; onRe
 
 function EmptyArt() {
   return (
-    <svg width="96" height="72" viewBox="0 0 96 72" aria-hidden className="text-gold">
+    <svg width="96" height="72" viewBox="0 0 96 72" aria-hidden className="text-accent">
       <rect x="22" y="10" width="52" height="60" rx="10" fill="var(--wf-surface-2)" transform="rotate(-8 48 40)" />
       <rect x="22" y="6" width="52" height="60" rx="10" fill="var(--wf-surface)" stroke="var(--wf-line-strong)" />
       <circle cx="48" cy="30" r="9" fill="currentColor" opacity="0.5" />

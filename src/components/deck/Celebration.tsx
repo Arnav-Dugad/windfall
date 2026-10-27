@@ -44,7 +44,7 @@ export function Celebration({
                 <m.div
                   aria-hidden
                   className="pointer-events-none absolute top-1/2 left-1/2 size-[80vmax] -translate-x-1/2 -translate-y-1/2 rounded-full"
-                  style={{ background: "radial-gradient(closest-side, color-mix(in oklab, var(--wf-gold) 28%, transparent), transparent)" }}
+                  style={{ background: "radial-gradient(closest-side, color-mix(in oklab, var(--wf-accent) 28%, transparent), transparent)" }}
                   initial={{ scale: 0.4, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
                   transition={{ duration: 1.4, ease: ease.outExpo }}
@@ -58,7 +58,7 @@ export function Celebration({
                     <Avatar seed={card.avatarSeed} name={card.firstName} photoUrl={card.photoUrl} blur={card.blurPhoto} shape="card" className="size-full" />
                   </m.div>
                   <m.p
-                    className="eyebrow mt-8 text-sage-ink"
+                    className="eyebrow mt-8 text-positive-ink"
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.35, duration: 0.6, ease: ease.outExpo }}
@@ -72,7 +72,7 @@ export function Celebration({
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.45, duration: 0.8, ease: ease.outExpo }}
                     >
-                      You cleared <em className="gold-sheen not-italic">{possessive(card.firstName)}</em> debt.
+                      You cleared <em className="accent-sheen not-italic">{possessive(card.firstName)}</em> debt.
                     </m.h2>
                   </Dialog.Title>
                   <m.p

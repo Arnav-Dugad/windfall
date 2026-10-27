@@ -9,9 +9,7 @@ const H = 1350;
 export async function renderShareCard(opts: { name: string; impact: Impact; dark: boolean }): Promise<Blob> {
   const { impact, dark } = opts;
   await Promise.all([
-    document.fonts.load('400 200px "Instrument Serif"'),
-    document.fonts.load('italic 400 80px "Instrument Serif"'),
-    document.fonts.load('500 32px "Geist Variable"'),
+    document.fonts.load('700 200px "Inter Variable"'),
   ]).catch(() => undefined);
 
   const c = {
@@ -20,7 +18,7 @@ export async function renderShareCard(opts: { name: string; impact: Impact; dark
     ink: dark ? "#f3efe7" : "#111111",
     ink2: dark ? "#bdb5a8" : "#57524a",
     ink3: dark ? "#8f887d" : "#8a8378",
-    gold: dark ? "#d6b67c" : "#b08a4c",
+    accent: dark ? "#2997ff" : "#0071e3",
     dots: dark ? "rgba(255,248,235,0.13)" : "rgba(17,17,17,0.10)",
     line: dark ? "rgba(255,248,235,0.10)" : "rgba(17,17,17,0.08)",
   };
@@ -35,7 +33,7 @@ export async function renderShareCard(opts: { name: string; impact: Impact; dark
 
   // Soft gold glow
   const glow = ctx.createRadialGradient(W * 0.78, 260, 20, W * 0.78, 260, 620);
-  glow.addColorStop(0, dark ? "rgba(214,182,124,0.22)" : "rgba(195,163,112,0.22)");
+  glow.addColorStop(0, dark ? "rgba(41,151,255,0.22)" : "rgba(0,113,227,0.16)");
   glow.addColorStop(1, "rgba(0,0,0,0)");
   ctx.fillStyle = glow;
   ctx.fillRect(0, 0, W, H);
@@ -45,28 +43,28 @@ export async function renderShareCard(opts: { name: string; impact: Impact; dark
   ctx.beginPath();
   ctx.arc(100, 110, 26, 0, Math.PI * 2);
   ctx.fill();
-  ctx.fillStyle = c.gold;
+  ctx.fillStyle = c.accent;
   ctx.beginPath();
   ctx.arc(100, 115, 11, 0, Math.PI * 2);
   ctx.fill();
   ctx.fillStyle = c.ink;
-  ctx.font = '400 52px "Instrument Serif", Georgia, serif';
+  ctx.font = '700 52px -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter Variable", system-ui, sans-serif';
   ctx.textBaseline = "middle";
   ctx.fillText("Windfall", 142, 112);
 
   ctx.textBaseline = "alphabetic";
-  ctx.font = '500 26px "Geist Variable", system-ui, sans-serif';
+  ctx.font = '500 26px -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter Variable", system-ui, sans-serif';
   ctx.fillStyle = c.ink3;
   ctx.letterSpacing = "4px";
   ctx.fillText(`${opts.name.toUpperCase()} · MY IMPACT`, 80, 300);
   ctx.letterSpacing = "0px";
 
   // Hero number
-  ctx.fillStyle = c.gold;
-  ctx.font = '400 190px "Instrument Serif", Georgia, serif';
+  ctx.fillStyle = c.accent;
+  ctx.font = '700 190px -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter Variable", system-ui, sans-serif';
   fitText(ctx, formatUSD(impact.totals.totalCents), 80, 470, W - 160, 190);
   ctx.fillStyle = c.ink2;
-  ctx.font = 'italic 400 54px "Instrument Serif", Georgia, serif';
+  ctx.font = '500 50px -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter Variable", system-ui, sans-serif';
   ctx.fillText("given, quietly, to people with stories.", 80, 550);
 
   // Map
@@ -86,11 +84,11 @@ export async function renderShareCard(opts: { name: string; impact: Impact; dark
     const x = (p.lng + 180) / WORLD_DOTS.step - 0.5;
     const y = (WORLD_DOTS.latMax - p.lat) / WORLD_DOTS.step;
     const r = 0.9 + Math.sqrt(p.totalCents / max) * 1.4;
-    ctx.fillStyle = dark ? "rgba(214,182,124,0.2)" : "rgba(176,138,76,0.18)";
+    ctx.fillStyle = dark ? "rgba(41,151,255,0.22)" : "rgba(0,113,227,0.16)";
     ctx.beginPath();
     ctx.arc(x, y, r * 2.4, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = c.gold;
+    ctx.fillStyle = c.accent;
     ctx.beginPath();
     ctx.arc(x, y, r, 0, Math.PI * 2);
     ctx.fill();
@@ -111,15 +109,15 @@ export async function renderShareCard(opts: { name: string; impact: Impact; dark
   stats.forEach(([v, l], i) => {
     const x = 80 + i * colW;
     ctx.fillStyle = c.ink;
-    ctx.font = '400 96px "Instrument Serif", Georgia, serif';
+    ctx.font = '700 96px -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter Variable", system-ui, sans-serif';
     ctx.fillText(v, x, top + 50);
     ctx.fillStyle = c.ink2;
-    ctx.font = '500 26px "Geist Variable", system-ui, sans-serif';
+    ctx.font = '500 26px -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter Variable", system-ui, sans-serif';
     ctx.fillText(l, x, top + 100);
   });
 
   ctx.fillStyle = c.ink3;
-  ctx.font = '400 22px "Geist Variable", system-ui, sans-serif';
+  ctx.font = '400 22px -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter Variable", system-ui, sans-serif';
   ctx.fillText("Demo data — no real money moved. Windfall is a fictional product demo.", 80, H - 70);
 
   return new Promise((resolve, reject) => canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("Couldn’t render image"))), "image/png"));
@@ -127,10 +125,10 @@ export async function renderShareCard(opts: { name: string; impact: Impact; dark
 
 function fitText(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, maxW: number, size: number) {
   let s = size;
-  ctx.font = `400 ${s}px "Instrument Serif", Georgia, serif`;
+  ctx.font = `700 ${s}px -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter Variable", system-ui, sans-serif`;
   while (ctx.measureText(text).width > maxW && s > 60) {
     s -= 6;
-    ctx.font = `400 ${s}px "Instrument Serif", Georgia, serif`;
+    ctx.font = `700 ${s}px -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter Variable", system-ui, sans-serif`;
   }
   ctx.fillText(text, x, y);
 }

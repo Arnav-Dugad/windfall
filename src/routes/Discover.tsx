@@ -93,7 +93,7 @@ export default function Discover() {
     } else if (dir === "down") {
       setHistory((h) => [...h, { card, dir }]);
       announce(`Saved ${card.firstName} for later.`);
-      toast({ message: `${card.firstName} saved to Maybe later`, tone: "gold" });
+      toast({ message: `${card.firstName} saved to Maybe later`, tone: "accent" });
       void api.swipe(card.id, "save").then(() => qc.invalidateQueries({ queryKey: ["saved"] }));
     } else if (dir === "right") {
       setGiving(card);
@@ -174,7 +174,7 @@ export default function Discover() {
         <Button variant="outline" size="sm" onClick={() => setFiltersOpen(true)} aria-label={`Filters${filterCount ? `, ${filterCount} active` : ""}`}>
           <SlidersHorizontal className="size-4" aria-hidden />
           <span className="hidden sm:inline">Filters</span>
-          {filterCount > 0 && <span className="grid size-5 place-items-center rounded-full bg-gold text-[11px] text-[#16120b] num">{filterCount}</span>}
+          {filterCount > 0 && <span className="grid size-5 place-items-center rounded-full bg-accent text-[11px] text-[#16120b] num">{filterCount}</span>}
         </Button>
       </div>
 
@@ -249,7 +249,7 @@ export default function Discover() {
               label="Clear it — fund the full amount (↑)"
               disabled={!top || busy}
               onClick={() => deckRef.current?.swipe("up")}
-              className="size-12 bg-sage-soft text-sage-ink shadow-none hover:bg-sage-soft hover:brightness-95"
+              className="size-12 bg-positive-soft text-positive-ink shadow-none hover:bg-positive-soft hover:brightness-95"
             >
               <ArrowUp className="size-5" aria-hidden strokeWidth={2.2} />
             </IconButton>
@@ -258,7 +258,7 @@ export default function Discover() {
               size="lg"
               disabled={!top || busy}
               onClick={() => deckRef.current?.swipe("right")}
-              className="size-16 bg-gold text-[#16120b] shadow-glow hover:bg-gold hover:brightness-105"
+              className="size-16 bg-accent text-[#16120b] shadow-glow hover:bg-accent hover:brightness-105"
             >
               <HandCoins className="size-6" aria-hidden strokeWidth={2} />
             </IconButton>

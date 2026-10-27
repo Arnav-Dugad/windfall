@@ -139,7 +139,7 @@ function GiveForm({
           <Chip
             active={choice.kind === "clear"}
             onClick={() => setChoice({ kind: "clear" })}
-            tone="sage"
+            tone="positive"
             className={cn(presets.length === 3 && "col-span-2 sm:col-span-4", presets.length === 1 && "col-span-2")}
           >
             Clear it · {formatCompactUSD(remaining)}
@@ -172,7 +172,7 @@ function GiveForm({
                   className="relative flex h-8 w-full touch-none items-center select-none"
                 >
                   <Slider.Track className="relative h-1.5 grow overflow-hidden rounded-full bg-line">
-                    <Slider.Range className="absolute h-full rounded-full bg-gradient-to-r from-gold/60 to-gold" />
+                    <Slider.Range className="absolute h-full rounded-full bg-gradient-to-r from-accent/60 to-accent" />
                   </Slider.Track>
                   <Slider.Thumb
                     aria-valuetext={formatUSD(custom)}
@@ -214,7 +214,7 @@ function GiveForm({
 
       <Button
         ref={buttonRef}
-        variant={isClear ? "sage" : "gold"}
+        variant={isClear ? "positive" : "accent"}
         size="lg"
         magnetic
         className="mt-5 w-full"
@@ -254,13 +254,13 @@ function Chip({
   active,
   onClick,
   children,
-  tone = "gold",
+  tone = "accent",
   className,
 }: {
   active: boolean;
   onClick: () => void;
   children: React.ReactNode;
-  tone?: "gold" | "sage";
+  tone?: "accent" | "positive";
   className?: string;
 }) {
   return (
@@ -286,7 +286,7 @@ function Chip({
           transition={spring.snappy}
           className={cn(
             "absolute inset-0 rounded-full",
-            tone === "sage" ? "bg-sage-soft shadow-[inset_0_0_0_1.5px_var(--wf-sage)]" : "bg-gold-soft shadow-[inset_0_0_0_1.5px_var(--wf-gold)]",
+            tone === "positive" ? "bg-positive-soft shadow-[inset_0_0_0_1.5px_var(--wf-positive)]" : "bg-accent-soft shadow-[inset_0_0_0_1.5px_var(--wf-accent)]",
           )}
         />
       )}
@@ -325,7 +325,7 @@ function GiftConfirmed({ card, result, onDone }: { card: RequestCard; result: Gi
     <div className="pb-1">
       <MiniCard card={result.request} pct={shown} shared={false} />
       <div className="mt-7 text-center">
-        <div className="mx-auto mb-4 grid size-11 place-items-center rounded-full bg-gold-soft text-gold-ink">
+        <div className="mx-auto mb-4 grid size-11 place-items-center rounded-full bg-accent-soft text-accent-ink">
           <Check className="size-5" aria-hidden />
         </div>
         <p className="display text-[3.4rem] leading-none tracking-[-0.02em]">

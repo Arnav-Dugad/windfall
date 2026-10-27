@@ -68,7 +68,7 @@ export function FileDrop({
         aria-describedby={`${id}-hint`}
         className={cn(
           "relative flex w-full flex-col items-center justify-center gap-2 overflow-hidden rounded-tile border border-dashed px-6 py-8 text-center transition-colors duration-(--duration-base) ring-focus",
-          over ? "border-gold bg-gold-soft" : done ? "border-sage bg-sage-soft" : "border-line-strong bg-surface-2 hover:border-ink-3",
+          over ? "border-accent bg-accent-soft" : done ? "border-positive bg-positive-soft" : "border-line-strong bg-surface-2 hover:border-ink-3",
         )}
       >
         <AnimatePresence mode="wait" initial={false}>
@@ -78,8 +78,8 @@ export function FileDrop({
               <span className="text-[14px] font-medium">Uploading securely…</span>
             </m.span>
           ) : done ? (
-            <m.span key="done" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="flex flex-col items-center gap-2 text-sage-ink">
-              <span className="grid size-9 place-items-center rounded-full bg-sage text-white">
+            <m.span key="done" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="flex flex-col items-center gap-2 text-positive-ink">
+              <span className="grid size-9 place-items-center rounded-full bg-positive text-white">
                 <Check className="size-5" aria-hidden />
               </span>
               <span className="max-w-full truncate text-[14px] font-medium">{done}</span>

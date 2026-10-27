@@ -10,7 +10,7 @@ export default function NotFound() {
         <Logo />
       </header>
       <main className="mx-auto flex max-w-lg flex-1 flex-col items-center justify-center pb-24 text-center">
-        <p className="display text-[9rem] leading-none text-gold-ink/70">404</p>
+        <p className="display text-[9rem] leading-none text-accent-ink/70">404</p>
         <h1 className="display mt-4 text-display-md text-balance">This page drifted off somewhere.</h1>
         <p className="mt-4 text-[16px] text-ink-2">The link may be old, or the story may have been closed by its author.</p>
         <ButtonLink to="/" className="mt-8" size="lg">Back to Windfall</ButtonLink>

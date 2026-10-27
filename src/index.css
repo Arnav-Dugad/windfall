@@ -23,18 +23,18 @@
     background: var(--wf-canvas);
     color: var(--wf-ink);
     font-family: var(--font-sans);
-    font-feature-settings: "ss01", "cv11";
+    font-size: 17px;
+    letter-spacing: -0.011em; /* SF Text-like tracking at body sizes */
     min-height: 100dvh;
     overflow-x: clip;
   }
   ::selection {
-    background: var(--wf-gold-soft);
-    color: var(--wf-ink);
+    background: color-mix(in srgb, var(--wf-accent) 22%, transparent);
   }
   :focus-visible {
-    outline: 2px solid var(--wf-gold);
-    outline-offset: 3px;
-    border-radius: 6px;
+    outline: 3px solid color-mix(in srgb, var(--wf-accent) 60%, transparent);
+    outline-offset: 2px;
+    border-radius: 10px;
   }
   button,
   [role="button"] {
@@ -47,26 +47,15 @@
   textarea,
   select {
     font: inherit;
+    letter-spacing: inherit;
   }
 }
 
 @layer components {
-  /* Subtle film grain over everything: a pre-rendered tile (scripts/render-grain.ts), cheap to paint. */
-  .grain::after {
-    content: "";
-    position: fixed;
-    inset: 0;
-    z-index: 100;
-    pointer-events: none;
-    opacity: var(--wf-grain-opacity);
-    background-image: url("/grain.png");
-  }
-
   .eyebrow {
     font-size: var(--text-eyebrow);
     letter-spacing: var(--text-eyebrow--letter-spacing);
-    text-transform: uppercase;
-    font-weight: 500;
+    font-weight: 600;
     color: var(--wf-ink-3);
   }
 
@@ -75,13 +64,14 @@
   }
 
   .num {
-    font-variant-numeric: tabular-nums lining-nums;
-    font-feature-settings: "tnum", "lnum";
+    font-variant-numeric: tabular-nums;
   }
 
+  /* Apple display type: semibold, tight tracking. */
   .display {
     font-family: var(--font-display);
-    font-weight: 400;
+    font-weight: 600;
+    letter-spacing: -0.028em;
   }
 
   .text-balance {
@@ -97,6 +87,48 @@
     box-shadow: var(--wf-shadow-card);
   }
 
+  /* Glass materials (Apple "vibrancy"): translucent fill + saturated blur + hairline edge highlight. */
+  .glass,
+  .glass-thick,
+  .glass-thin {
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    backdrop-filter: blur(24px) saturate(180%);
+    box-shadow: var(--wf-glass-edge);
+  }
+  .glass {
+    background: var(--wf-glass);
+  }
+  .glass-thick {
+    background: var(--wf-glass-thick);
+    -webkit-backdrop-filter: blur(40px) saturate(190%);
+    backdrop-filter: blur(40px) saturate(190%);
+  }
+  .glass-thin {
+    background: var(--wf-glass-thin);
+    -webkit-backdrop-filter: blur(16px) saturate(170%);
+    backdrop-filter: blur(16px) saturate(170%);
+  }
+  /* Glass that sits on photos: always light-on-dark, regardless of theme. */
+  .glass-photo {
+    background: rgb(20 20 22 / 0.34);
+    color: #fff;
+    -webkit-backdrop-filter: blur(20px) saturate(160%);
+    backdrop-filter: blur(20px) saturate(160%);
+    box-shadow: inset 0 0 0 0.5px rgb(255 255 255 / 0.22);
+  }
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .glass,
+    .glass-thin {
+      background: var(--wf-surface);
+    }
+    .glass-thick {
+      background: var(--wf-surface);
+    }
+    .glass-photo {
+      background: rgb(20 20 22 / 0.7);
+    }
+  }
+
   .no-scrollbar {
     scrollbar-width: none;
   }
@@ -109,39 +141,50 @@
     outline: none;
     box-shadow:
       0 0 0 2px var(--wf-canvas),
-      0 0 0 4px var(--wf-gold);
+      0 0 0 5px color-mix(in srgb, var(--wf-accent) 65%, transparent);
   }
 
-  .gold-sheen {
-    background: linear-gradient(
-      100deg,
-      var(--wf-gold-ink) 0%,
-      var(--wf-gold) 45%,
-      var(--wf-gold-ink) 90%
-    );
+  /* Apple-style gradient headline text. */
+  .accent-sheen {
+    background: linear-gradient(95deg, #0071e3 0%, #6e4cf5 55%, #c13584 100%);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
+  }
+  [data-theme="dark"] .accent-sheen {
+    background: linear-gradient(95deg, #2997ff 0%, #a78bfa 55%, #f472b6 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
   }
 
   .skeleton {
     position: relative;
     overflow: hidden;
-    background: var(--wf-surface-2);
+    background: var(--wf-fill);
   }
   .skeleton::after {
     content: "";
     position: absolute;
     inset: 0;
-    background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.5), transparent);
+    background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.45), transparent);
     animation: var(--animate-shimmer);
   }
   [data-theme="dark"] .skeleton::after {
-    background: linear-gradient(90deg, transparent, rgb(255 248 235 / 0.06), transparent);
+    background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.06), transparent);
   }
   @media (prefers-reduced-motion: reduce) {
     .skeleton::after {
       animation: none;
+    }
+  }
+
+  /* Marquee rows pause on hover and stop entirely for reduced motion. */
+  .marquee:hover > * {
+    animation-play-state: paused;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .marquee > * {
+      animation: none !important;
     }
   }
 }

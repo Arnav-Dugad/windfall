@@ -63,7 +63,7 @@ async function shots(browser: Browser, theme: "light" | "dark") {
     await m.screenshot({ path: `${out}/give-sheet-mobile.jpg`, quality: 85 });
     await m.keyboard.press("Escape");
     await m.waitForTimeout(800);
-    await signIn(m, "seeker", /^Maya/);
+    await signIn(m, "seeker", /part-funded/);
     await m.getByRole("link", { name: /Manage/ }).first().click();
     await m.waitForTimeout(1800);
     await m.screenshot({ path: `${out}/seeker-mobile.jpg`, quality: 85 });

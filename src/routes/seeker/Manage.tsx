@@ -35,7 +35,7 @@ export default function ManageRequest() {
     if (!newest) return;
     if (lastGift.current && newest.id !== lastGift.current) {
       const msg = `New gift: ${formatUSD(newest.amountCents)} from ${newest.from ?? "an anonymous Patron"}`;
-      toast({ message: msg, tone: "gold" });
+      toast({ message: msg, tone: "accent" });
       announce(msg);
     }
     lastGift.current = newest.id;
@@ -92,8 +92,8 @@ export default function ManageRequest() {
           <section className="card-surface p-6 sm:p-7" aria-label="Live funding">
             <div className="flex items-center gap-2">
               <span className="relative flex size-2">
-                {r.status === "active" && <span className="absolute inline-flex size-full rounded-full bg-sage opacity-60 motion-safe:animate-ping" />}
-                <span className={cn("relative inline-flex size-2 rounded-full", r.status === "active" ? "bg-sage" : "bg-ink-3")} />
+                {r.status === "active" && <span className="absolute inline-flex size-full rounded-full bg-positive opacity-60 motion-safe:animate-ping" />}
+                <span className={cn("relative inline-flex size-2 rounded-full", r.status === "active" ? "bg-positive" : "bg-ink-3")} />
               </span>
               <p className="eyebrow">{r.status === "active" ? "Live" : s.label}</p>
             </div>
@@ -118,8 +118,8 @@ export default function ManageRequest() {
               <ul className="mt-4 divide-y divide-line rounded-tile bg-surface hairline">
                 <AnimatePresence initial={false}>
                   {gifts.map((g) => (
-                    <m.li key={g.id} layout initial={{ opacity: 0, backgroundColor: "var(--wf-gold-soft)" }} animate={{ opacity: 1, backgroundColor: "rgba(0,0,0,0)" }} transition={{ duration: 1.2 }} className="flex items-center gap-4 px-4 py-3.5 sm:px-5">
-                      <Avatar seed={g.avatarSeed} className="size-9 shrink-0" monogram={false} />
+                    <m.li key={g.id} layout initial={{ opacity: 0, backgroundColor: "var(--wf-accent-soft)" }} animate={{ opacity: 1, backgroundColor: "rgba(0,0,0,0)" }} transition={{ duration: 1.2 }} className="flex items-center gap-4 px-4 py-3.5 sm:px-5">
+                      <Avatar seed={g.avatarSeed} name={g.from ?? undefined} photoUrl={g.photo} className="size-9 shrink-0" monogram={!!g.from} />
                       <div className="min-w-0 flex-1">
                         <p className="text-[15px] font-medium">{g.from ?? "Anonymous Patron"}</p>
                         <p className="text-[12.5px] text-ink-3">
@@ -140,7 +140,7 @@ export default function ManageRequest() {
           {editable && <PostUpdate requestId={r.id} hasGifts={gifts.length > 0} />}
           {r.verification === "unverified" && editable && <VerifyPanel requestId={r.id} />}
           {r.verification === "pending" && (
-            <div className="flex gap-3 rounded-tile bg-gold-soft p-5 text-[14px] text-gold-ink">
+            <div className="flex gap-3 rounded-tile bg-accent-soft p-5 text-[14px] text-accent-ink">
               <FileCheck2 className="size-5 shrink-0" aria-hidden />
               <p>Your document is being reviewed. This demo simulates review — it’ll show “Verified” in about 20 seconds.</p>
             </div>
@@ -148,7 +148,7 @@ export default function ManageRequest() {
 
           <section className="card-surface p-5 sm:p-6" aria-labelledby="dignity-h">
             <h2 id="dignity-h" className="flex items-center gap-2 text-[15px] font-medium">
-              <ShieldCheck className="size-4 text-sage-ink" aria-hidden /> Your privacy & control
+              <ShieldCheck className="size-4 text-positive-ink" aria-hidden /> Your privacy & control
             </h2>
             <ul className="mt-4 space-y-4 text-[14px]">
               <li className="flex items-start justify-between gap-4">
@@ -156,7 +156,7 @@ export default function ManageRequest() {
                   <span className="block font-medium">First name only</span>
                   <span className="text-ink-2">Always on. Patrons never see your surname or address.</span>
                 </span>
-                <Badge tone="sage">On</Badge>
+                <Badge tone="positive">On</Badge>
               </li>
               <ToggleRow
                 label="Blur my photo"
@@ -218,7 +218,7 @@ function PostUpdate({ requestId, hasGifts }: { requestId: string; hasGifts: bool
     mutationFn: () => api.postUpdate(requestId, kind, body),
     onSuccess: () => {
       setBody("");
-      toast({ message: kind === "thanks" ? "Thank-you note sent to your Patrons" : "Update posted", tone: "sage" });
+      toast({ message: kind === "thanks" ? "Thank-you note sent to your Patrons" : "Update posted", tone: "positive" });
       void qc.invalidateQueries({ queryKey: ["my-request", requestId] });
     },
     onError: (e) => setError(e.message),
@@ -286,14 +286,14 @@ function VerifyPanel({ requestId }: { requestId: string }) {
   const attach = useMutation({
     mutationFn: (key: string) => api.attachDocument(requestId, key),
     onSuccess: () => {
-      toast({ message: "Document received — review started", tone: "gold" });
+      toast({ message: "Document received — review started", tone: "accent" });
       void qc.invalidateQueries({ queryKey: ["my-request", requestId] });
     },
   });
   return (
     <section className="card-surface p-5 sm:p-6" aria-label="Get verified">
       <h2 className="flex items-center gap-2 text-[15px] font-medium">
-        <FileCheck2 className="size-4 text-gold-ink" aria-hidden /> Get verified
+        <FileCheck2 className="size-4 text-accent-ink" aria-hidden /> Get verified
       </h2>
       <p className="mt-2 text-[14px] text-ink-2">Verified requests are shown to more Patrons. Upload a statement or bill — only our reviewers see it.</p>
       <div className="mt-4">

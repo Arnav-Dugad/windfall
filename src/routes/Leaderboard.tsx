@@ -22,7 +22,7 @@ export default function Leaderboard() {
     const { user } = await api.updateProfile(v);
     qc.setQueryData(["me"], { user });
     await qc.invalidateQueries({ queryKey: ["leaderboard"] });
-    toast({ message: v ? "You now appear as Anonymous Patron" : "Your name is shown on the index", tone: "gold" });
+    toast({ message: v ? "You now appear as Anonymous Patron" : "Your name is shown on the index", tone: "accent" });
   };
 
   return (
@@ -68,12 +68,12 @@ export default function Leaderboard() {
               transition={{ ...spring.gentle, delay: Math.min(i, 10) * 0.035 }}
               className={cn(
                 "flex items-center gap-4 rounded-tile px-4 py-3.5 sm:px-5",
-                e.isYou ? "bg-gold-soft shadow-[inset_0_0_0_1px_var(--wf-gold)]" : "bg-surface hairline",
+                e.isYou ? "bg-accent-soft shadow-[inset_0_0_0_1px_var(--wf-accent)]" : "bg-surface hairline",
               )}
               aria-current={e.isYou ? "true" : undefined}
             >
-              <span className={cn("display w-8 text-center text-[1.9rem] leading-none num", e.rank <= 3 ? "text-gold-ink" : "text-ink-3")}>{e.rank}</span>
-              <Avatar seed={e.avatarSeed} className="size-10 shrink-0" monogram={false} />
+              <span className={cn("display w-8 text-center text-[1.9rem] leading-none num", e.rank <= 3 ? "text-accent-ink" : "text-ink-3")}>{e.rank}</span>
+              <Avatar seed={e.avatarSeed} name={e.anonymous ? undefined : e.displayName} photoUrl={e.photo} className="size-10 shrink-0" monogram={!e.anonymous} />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-[15px] font-medium">{e.displayName}</p>
                 <p className="text-[12.5px] text-ink-2 num">

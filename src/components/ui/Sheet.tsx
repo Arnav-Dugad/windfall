@@ -38,7 +38,7 @@ export function Sheet({
           <Dialog.Portal forceMount>
             <Dialog.Overlay asChild forceMount>
               <m.div
-                className="fixed inset-0 z-50 bg-scrim"
+                className="fixed inset-0 z-50 bg-scrim backdrop-blur-[2px]"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
@@ -49,7 +49,7 @@ export function Sheet({
               <Dialog.Content asChild forceMount {...(description ? {} : { "aria-describedby": undefined })}>
                 <m.div
                   className={cn(
-                    "pointer-events-auto relative w-full max-w-lg bg-surface shadow-float outline-none",
+                    "glass-thick pointer-events-auto relative w-full max-w-lg shadow-float outline-none",
                     "rounded-t-sheet pb-[max(env(safe-area-inset-bottom),1.25rem)] sm:rounded-sheet sm:pb-6",
                     "max-h-[92dvh] overflow-y-auto overscroll-contain no-scrollbar",
                     className,
@@ -73,12 +73,12 @@ export function Sheet({
                       onPointerDown={(e) => controls.start(e)}
                       aria-hidden
                     >
-                      <div className="h-1 w-10 rounded-full bg-line-strong" />
+                      <div className="h-[5px] w-9 rounded-full bg-fill-2" />
                     </div>
                   )}
                   <div className={cn("flex items-start justify-between gap-4 px-6", desktop ? "pt-6" : "pt-1")}>
                     <div className={cn(hideTitle && "sr-only")}>
-                      <Dialog.Title className="display text-[1.9rem] leading-[1.05] tracking-[-0.01em] text-balance">
+                      <Dialog.Title className="display text-[1.6rem] leading-[1.1] text-balance">
                         {title}
                       </Dialog.Title>
                       {description && (

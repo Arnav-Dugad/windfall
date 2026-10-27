@@ -36,12 +36,12 @@ export default function AppShell() {
 
   return (
     <div className="min-h-dvh">
-      <header className="sticky top-0 z-40 border-b border-line bg-canvas/80 backdrop-blur-xl backdrop-saturate-150">
-        <div className="mx-auto flex h-16 max-w-6xl items-center gap-4 px-4 sm:px-6">
+      <header className="glass sticky top-0 z-40 !shadow-[0_0.5px_0_var(--wf-line-strong)]">
+        <div className="mx-auto flex h-14 max-w-6xl items-center gap-4 px-4 sm:px-6">
           <Logo to={user ? (user.role === "patron" ? "/discover" : "/seeker") : "/"} />
           <DemoBadge className="hidden sm:inline-flex" />
           {items.length > 0 && (
-            <nav aria-label="Primary" className="mx-auto hidden items-center gap-1 rounded-full bg-surface-2/70 p-1 md:flex">
+            <nav aria-label="Primary" className="mx-auto hidden items-center gap-0.5 rounded-full bg-fill p-1 md:flex">
               {items.map((item) => (
                 <NavLink
                   key={item.to}
@@ -49,7 +49,7 @@ export default function AppShell() {
                   end
                   className={({ isActive }) =>
                     cn(
-                      "relative inline-flex h-9 items-center gap-2 rounded-full px-4 text-[14px] font-medium transition-colors ring-focus",
+                      "relative inline-flex h-8 items-center gap-1.5 rounded-full px-3.5 text-[13.5px] font-semibold transition-colors ring-focus",
                       isActive ? "text-ink" : "text-ink-2 hover:text-ink",
                     )
                   }
@@ -57,7 +57,7 @@ export default function AppShell() {
                   {({ isActive }) => (
                     <>
                       {isActive && (
-                        <m.span layoutId="nav-pill" transition={spring.snappy} className="absolute inset-0 rounded-full bg-surface shadow-sm" />
+                        <m.span layoutId="nav-pill" transition={spring.snappy} className="absolute inset-0 rounded-full bg-surface shadow-sm dark:bg-surface-2" />
                       )}
                       <item.icon className="relative size-4" aria-hidden />
                       <span className="relative">{item.label}</span>
@@ -81,7 +81,7 @@ export default function AppShell() {
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
-          className={cn(items.length > 0 && "pb-[calc(env(safe-area-inset-bottom)+5rem)] md:pb-0")}
+          className={cn(items.length > 0 && "pb-[calc(env(safe-area-inset-bottom)+6.5rem)] md:pb-0")}
         >
           <Outlet />
         </m.div>
@@ -96,9 +96,9 @@ function TabBar({ items }: { items: readonly { to: string; label: string; icon: 
   return (
     <nav
       aria-label="Primary"
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-canvas/85 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl md:hidden"
+      className="pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center px-4 pb-[max(env(safe-area-inset-bottom),12px)] md:hidden"
     >
-      <div className="mx-auto flex max-w-md items-stretch justify-around px-2">
+      <div className="glass-thick pointer-events-auto flex w-full max-w-md items-stretch justify-around rounded-full p-1.5 shadow-float">
         {items.map((item) => (
           <NavLink
             key={item.to}
@@ -106,17 +106,17 @@ function TabBar({ items }: { items: readonly { to: string; label: string; icon: 
             end
             className={({ isActive }) =>
               cn(
-                "relative flex h-16 flex-1 flex-col items-center justify-center gap-1 text-[11px] font-medium transition-colors ring-focus",
-                isActive ? "text-ink" : "text-ink-3",
+                "relative flex h-[54px] flex-1 flex-col items-center justify-center gap-0.5 rounded-full text-[10.5px] font-semibold transition-colors ring-focus",
+                isActive ? "text-accent" : "text-ink-2",
               )
             }
           >
             {({ isActive }) => (
               <>
                 {isActive && (
-                  <m.span layoutId="tab-dot" transition={spring.snappy} className="absolute top-1.5 h-1 w-6 rounded-full bg-gold" />
+                  <m.span layoutId="tab-dot" transition={spring.snappy} className="absolute inset-0 rounded-full bg-fill" />
                 )}
-                <item.icon className="size-5" aria-hidden strokeWidth={isActive ? 2.2 : 1.8} />
+                <item.icon className="relative size-[22px]" aria-hidden strokeWidth={isActive ? 2.2 : 1.8} />
                 {item.label}
               </>
             )}
@@ -136,29 +136,29 @@ function AccountMenu({ user }: { user: PublicUser }) {
     const { user: u } = await api.updateProfile(!user.anonymousByDefault);
     qc.setQueryData(["me"], { user: u });
     void qc.invalidateQueries({ queryKey: ["leaderboard"] });
-    toast({ message: u.anonymousByDefault ? "You’ll give anonymously by default" : "Your name will show on gifts", tone: "gold" });
+    toast({ message: u.anonymousByDefault ? "You’ll give anonymously by default" : "Your name will show on gifts", tone: "accent" });
   };
 
   return (
     <DropdownMenu.Root>
       <DropdownMenu.Trigger asChild>
         <button
-          className="ml-1 flex items-center gap-2 rounded-full p-1 pr-1 transition-colors hover:bg-surface-2 sm:pr-3 ring-focus"
+          className="ml-1 flex items-center gap-2 rounded-full p-1 pr-1 transition-colors hover:bg-fill sm:pr-3 ring-focus"
           aria-label={`Account: ${user.displayName}`}
         >
-          <Avatar seed={user.avatarSeed} className="size-8" monogram={false} />
-          <span className="hidden text-[14px] font-medium sm:inline">{user.displayName}</span>
+          <Avatar seed={user.avatarSeed} name={user.displayName} photoUrl={user.photoURL} className="size-8" />
+          <span className="hidden text-[14px] font-semibold sm:inline">{user.displayName}</span>
         </button>
       </DropdownMenu.Trigger>
       <DropdownMenu.Portal>
         <DropdownMenu.Content
           align="end"
           sideOffset={8}
-          className="z-50 min-w-60 origin-[var(--radix-dropdown-menu-content-transform-origin)] rounded-tile bg-surface p-1.5 shadow-float hairline data-[state=open]:animate-[menu-in_180ms_var(--ease-out-expo)]"
+          className="glass-thick z-50 min-w-60 origin-[var(--radix-dropdown-menu-content-transform-origin)] rounded-[18px] p-1.5 shadow-float data-[state=open]:animate-[menu-in_180ms_var(--ease-out-expo)]"
         >
           <div className="px-3 pt-2 pb-2.5">
             <p className="text-[14px] font-medium">{user.displayName}</p>
-            <p className="text-[12.5px] text-ink-3 capitalize">Demo {user.role}</p>
+            <p className="text-[12.5px] text-ink-3 capitalize">{user.isDemo ? `Demo ${user.role}` : user.role}</p>
           </div>
           <DropdownMenu.Separator className="my-1 h-px bg-line" />
           {user.role === "patron" && (
@@ -188,7 +188,7 @@ function MenuItem({ children, onSelect, icon: Icon }: { children: React.ReactNod
   return (
     <DropdownMenu.Item
       onSelect={onSelect}
-      className="flex h-10 cursor-pointer items-center gap-2.5 rounded-[12px] px-3 text-[14px] outline-none select-none data-[highlighted]:bg-surface-2"
+      className="flex h-10 cursor-pointer items-center gap-2.5 rounded-[12px] px-3 text-[14px] outline-none select-none data-[highlighted]:bg-fill"
     >
       <Icon className="size-4 text-ink-2" aria-hidden />
       {children}

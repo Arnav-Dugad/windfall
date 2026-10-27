@@ -47,7 +47,7 @@ export default function Impact() {
       <div className="flex flex-wrap items-end justify-between gap-6">
         <div>
           <p className="eyebrow">Your impact</p>
-          <h1 className="display mt-4 text-display-xl text-gold-ink">
+          <h1 className="display mt-4 text-display-xl text-accent-ink">
             <Ticker value={d.totals.totalCents} format={formatUSDWhole} duration={1.8} />
           </h1>
           <p className="mt-3 text-[16px] text-ink-2">
@@ -141,7 +141,7 @@ export default function Impact() {
           {d.recent.map((g) => (
             <li key={g.giftId}>
               <Link to={`/story/${g.requestId}`} className="flex items-center gap-4 px-4 py-3.5 transition-colors hover:bg-surface-2 sm:px-5 ring-focus">
-                <Avatar seed={g.avatarSeed} name={g.firstName} className="size-11 shrink-0" />
+                <Avatar seed={g.avatarSeed} name={g.firstName} photoUrl={g.photoUrl} className="size-11 shrink-0" />
                 <div className="min-w-0 flex-1">
                   <p className="text-[15px] font-medium">
                     {g.firstName} <span className="font-normal text-ink-3">· {g.country}</span>
@@ -151,7 +151,7 @@ export default function Impact() {
                     {g.anonymous && " · anonymous"}
                   </p>
                 </div>
-                {g.cleared && <Badge tone="sage" className="hidden sm:inline-flex">Cleared</Badge>}
+                {g.cleared && <Badge tone="positive" className="hidden sm:inline-flex">Cleared</Badge>}
                 <span className="num text-[15px] font-medium">{formatUSD(g.amountCents)}</span>
                 <ArrowRight className="size-4 text-ink-3" aria-hidden />
               </Link>
@@ -180,7 +180,7 @@ function Stat({
 }) {
   const body = (
     <>
-      <Icon className="size-5 text-gold-ink" aria-hidden />
+      <Icon className="size-5 text-accent-ink" aria-hidden />
       <p className="display mt-6 text-[2.6rem] leading-none">
         <Ticker value={value} format={(n) => `${n.toLocaleString("en-US")}${suffix}`} />
       </p>
@@ -225,7 +225,7 @@ function ShareSheet({ open, onOpenChange, impact, name }: { open: boolean; onOpe
         await navigator.share({ files: [f], title: "My Windfall impact" });
       } else {
         await navigator.clipboard.write([new ClipboardItem({ "image/png": file.blob })]);
-        toast({ message: "Image copied to clipboard", tone: "gold" });
+        toast({ message: "Image copied to clipboard", tone: "accent" });
       }
     } catch {
       /* user cancelled */

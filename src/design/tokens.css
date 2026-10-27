@@ -1,70 +1,93 @@
 /*
- * Windfall design tokens — the single source for color, type, radii, shadows and motion timing.
- * Runtime values live on :root (light) and [data-theme="dark"]; Tailwind utilities are generated from @theme.
- * Spring physics for Motion are in ./motion.ts and mirror the duration/easing names here.
+ * Windfall design tokens — the single source for color, type, radii, materials, shadows and motion timing.
+ * Visual language: Apple-like. System greys, one blue accent, green for "cleared", translucent glass
+ * materials with saturated blur, generous continuous-feeling radii, and San Francisco / Inter type.
+ * Runtime values live on :root (light) and [data-theme="dark"]; Tailwind utilities come from @theme.
+ * Spring physics for Motion live in ./motion.ts.
  */
 
 :root {
-  /* Palette — quiet luxury, warm ivory */
-  --wf-canvas: #faf7f2;
-  --wf-canvas-2: #f4efe6;
-  --wf-surface: #fffdf9;
-  --wf-surface-2: #f6f1e8;
-  --wf-ink: #111111;
-  --wf-ink-2: #57524a; /* 7.1:1 on canvas */
-  --wf-ink-3: #6e685e; /* 5.1:1 on canvas — smallest text allowed */
-  --wf-line: rgb(17 17 17 / 0.08);
-  --wf-line-strong: rgb(17 17 17 / 0.14);
-  --wf-gold: #c3a370; /* fills, rings, glows */
-  --wf-gold-soft: #ece0c8;
-  --wf-gold-ink: #7a5a26; /* gold text: 5.9:1 on canvas */
-  --wf-sage: #8aa892;
-  --wf-sage-soft: #e3ebe2;
-  --wf-sage-ink: #3f5c47; /* 6.8:1 on canvas */
-  --wf-danger: #a4442f;
-  --wf-chart: #a97b2e; /* data marks; validated: L/chroma band + 3:1 vs surface */
-  --wf-on-ink: #faf7f2;
-  --wf-scrim: rgb(17 14 10 / 0.36);
-  --wf-grain-opacity: 0.045;
+  /* Neutrals (Apple system greys) */
+  --wf-canvas: #f5f5f7;
+  --wf-canvas-2: #ebebef;
+  --wf-surface: #ffffff;
+  --wf-surface-2: #f2f2f7; /* systemGray6 */
+  --wf-ink: #1d1d1f;
+  --wf-ink-2: #424245; /* 10:1 on canvas */
+  --wf-ink-3: #6e6e73; /* 4.9:1 on canvas — smallest text allowed */
+  --wf-line: rgb(0 0 0 / 0.08);
+  --wf-line-strong: rgb(0 0 0 / 0.14);
+  --wf-fill: rgb(120 120 128 / 0.12); /* systemFill — grey buttons, tracks */
+  --wf-fill-2: rgb(120 120 128 / 0.2);
 
-  /* Elevation — soft, layered, warm-tinted */
-  --wf-shadow-hair: 0 0 0 1px rgb(17 17 17 / 0.06);
-  --wf-shadow-sm: 0 1px 1px rgb(40 30 15 / 0.04), 0 2px 6px rgb(40 30 15 / 0.04);
-  --wf-shadow-card: 0 1px 1px rgb(40 30 15 / 0.03), 0 4px 8px rgb(40 30 15 / 0.04), 0 16px 32px -8px rgb(40 30 15 / 0.08),
-    0 40px 80px -24px rgb(40 30 15 / 0.14);
-  --wf-shadow-float: 0 2px 4px rgb(40 30 15 / 0.04), 0 24px 64px -16px rgb(40 30 15 / 0.22);
-  --wf-glow-gold: 0 0 0 1px rgb(195 163 112 / 0.35), 0 8px 32px -8px rgb(195 163 112 / 0.45);
+  /* Accent & semantics */
+  --wf-accent: #0071e3; /* Apple blue: 4.6:1 on white */
+  --wf-accent-hover: #0077ed;
+  --wf-accent-soft: #e8f1fc;
+  --wf-accent-ink: #0066cc; /* 5.6:1 on canvas */
+  --wf-positive: #34c759;
+  --wf-positive-soft: #e5f6ea;
+  --wf-positive-ink: #1b7a34; /* 5.4:1 on canvas */
+  --wf-danger: #d70015;
+  --wf-coin: #e3b341; /* coins, confetti, medals */
+  --wf-chart: #0071e3; /* data marks; 4.6:1 vs surface */
+  --wf-on-accent: #ffffff;
+  --wf-on-ink: #ffffff;
+  --wf-scrim: rgb(0 0 0 / 0.32);
+
+  /* Materials */
+  --wf-glass: rgb(255 255 255 / 0.72);
+  --wf-glass-thick: rgb(255 255 255 / 0.86);
+  --wf-glass-thin: rgb(255 255 255 / 0.5);
+  --wf-glass-edge: inset 0 0 0 0.5px rgb(255 255 255 / 0.7), 0 0 0 0.5px rgb(0 0 0 / 0.06);
+
+  /* Elevation — soft and diffuse */
+  --wf-shadow-hair: 0 0 0 0.5px rgb(0 0 0 / 0.1);
+  --wf-shadow-sm: 0 1px 2px rgb(0 0 0 / 0.05), 0 2px 8px rgb(0 0 0 / 0.04);
+  --wf-shadow-card: 0 1px 1px rgb(0 0 0 / 0.03), 0 8px 24px rgb(0 0 0 / 0.06), 0 32px 64px -24px rgb(0 0 0 / 0.14);
+  --wf-shadow-float: 0 4px 12px rgb(0 0 0 / 0.06), 0 24px 60px -12px rgb(0 0 0 / 0.22);
+  --wf-glow: 0 8px 24px -6px rgb(0 113 227 / 0.45);
 
   color-scheme: light;
 }
 
 [data-theme="dark"] {
-  --wf-canvas: #12110f;
-  --wf-canvas-2: #181715;
-  --wf-surface: #1c1a17;
-  --wf-surface-2: #24221e;
-  --wf-ink: #f3efe7;
-  --wf-ink-2: #bdb5a8;
-  --wf-ink-3: #a29a8d; /* 6.6:1 on canvas */
-  --wf-line: rgb(255 248 235 / 0.08);
-  --wf-line-strong: rgb(255 248 235 / 0.14);
-  --wf-gold: #d6b67c;
-  --wf-gold-soft: #3a3125;
-  --wf-gold-ink: #e3c78f;
-  --wf-sage: #93b39a;
-  --wf-sage-soft: #233029;
-  --wf-sage-ink: #a9c9b0;
-  --wf-danger: #e08a74;
-  --wf-chart: #b88b38;
-  --wf-on-ink: #12110f;
-  --wf-scrim: rgb(0 0 0 / 0.56);
-  --wf-grain-opacity: 0.06;
+  --wf-canvas: #000000;
+  --wf-canvas-2: #0b0b0d;
+  --wf-surface: #1c1c1e;
+  --wf-surface-2: #2c2c2e;
+  --wf-ink: #f5f5f7;
+  --wf-ink-2: #d2d2d7;
+  --wf-ink-3: #98989d; /* 7.4:1 on black */
+  --wf-line: rgb(255 255 255 / 0.1);
+  --wf-line-strong: rgb(255 255 255 / 0.16);
+  --wf-fill: rgb(120 120 128 / 0.32);
+  --wf-fill-2: rgb(120 120 128 / 0.44);
 
-  --wf-shadow-hair: 0 0 0 1px rgb(255 248 235 / 0.07);
-  --wf-shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
-  --wf-shadow-card: 0 0 0 1px rgb(255 248 235 / 0.06), 0 16px 40px -8px rgb(0 0 0 / 0.6), 0 40px 80px -24px rgb(0 0 0 / 0.5);
-  --wf-shadow-float: 0 0 0 1px rgb(255 248 235 / 0.06), 0 24px 64px -16px rgb(0 0 0 / 0.7);
-  --wf-glow-gold: 0 0 0 1px rgb(214 182 124 / 0.4), 0 0 40px -6px rgb(214 182 124 / 0.45);
+  --wf-accent: #0a84ff;
+  --wf-accent-hover: #409cff;
+  --wf-accent-soft: #0b2a4a;
+  --wf-accent-ink: #4aa3ff;
+  --wf-positive: #30d158;
+  --wf-positive-soft: #0f3a1c;
+  --wf-positive-ink: #4ade80;
+  --wf-danger: #ff6961;
+  --wf-coin: #ffd60a;
+  --wf-chart: #0a84ff;
+  --wf-on-accent: #ffffff;
+  --wf-on-ink: #000000;
+  --wf-scrim: rgb(0 0 0 / 0.55);
+
+  --wf-glass: rgb(30 30 32 / 0.72);
+  --wf-glass-thick: rgb(28 28 30 / 0.88);
+  --wf-glass-thin: rgb(44 44 46 / 0.5);
+  --wf-glass-edge: inset 0 0 0 0.5px rgb(255 255 255 / 0.12), 0 0 0 0.5px rgb(0 0 0 / 0.4);
+
+  --wf-shadow-hair: 0 0 0 0.5px rgb(255 255 255 / 0.12);
+  --wf-shadow-sm: 0 1px 2px rgb(0 0 0 / 0.5);
+  --wf-shadow-card: 0 0 0 0.5px rgb(255 255 255 / 0.08), 0 24px 60px -16px rgb(0 0 0 / 0.8);
+  --wf-shadow-float: 0 0 0 0.5px rgb(255 255 255 / 0.1), 0 30px 70px -10px rgb(0 0 0 / 0.85);
+  --wf-glow: 0 8px 28px -6px rgb(10 132 255 / 0.55);
 
   color-scheme: dark;
 }
@@ -79,54 +102,66 @@
   --color-ink-3: var(--wf-ink-3);
   --color-line: var(--wf-line);
   --color-line-strong: var(--wf-line-strong);
-  --color-gold: var(--wf-gold);
-  --color-gold-soft: var(--wf-gold-soft);
-  --color-gold-ink: var(--wf-gold-ink);
-  --color-sage: var(--wf-sage);
-  --color-sage-soft: var(--wf-sage-soft);
-  --color-sage-ink: var(--wf-sage-ink);
+  --color-fill: var(--wf-fill);
+  --color-fill-2: var(--wf-fill-2);
+  --color-accent: var(--wf-accent);
+  --color-accent-hover: var(--wf-accent-hover);
+  --color-accent-soft: var(--wf-accent-soft);
+  --color-accent-ink: var(--wf-accent-ink);
+  --color-positive: var(--wf-positive);
+  --color-positive-soft: var(--wf-positive-soft);
+  --color-positive-ink: var(--wf-positive-ink);
   --color-danger: var(--wf-danger);
+  --color-coin: var(--wf-coin);
   --color-chart: var(--wf-chart);
+  --color-on-accent: var(--wf-on-accent);
   --color-on-ink: var(--wf-on-ink);
   --color-scrim: var(--wf-scrim);
+  --color-glass: var(--wf-glass);
+  --color-glass-thick: var(--wf-glass-thick);
+  --color-glass-thin: var(--wf-glass-thin);
 
   --shadow-hair: var(--wf-shadow-hair);
   --shadow-sm: var(--wf-shadow-sm);
   --shadow-card: var(--wf-shadow-card);
   --shadow-float: var(--wf-shadow-float);
-  --shadow-glow: var(--wf-glow-gold);
+  --shadow-glow: var(--wf-glow);
+  --shadow-glass: var(--wf-glass-edge);
 }
 
 @theme {
-  /* Type */
-  --font-display: "Instrument Serif", "Instrument Serif Fallback", ui-serif, Georgia, serif;
-  --font-sans: "Geist Variable", "Geist Fallback", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  /* Type — San Francisco on Apple platforms, Inter elsewhere */
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter Variable", "Inter Fallback", "Segoe UI Variable Text",
+    "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter Variable", "Inter Fallback", "Segoe UI Variable Display",
+    "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 
-  --text-display-xl: clamp(3.4rem, 9vw, 8rem);
-  --text-display-xl--line-height: 0.92;
-  --text-display-xl--letter-spacing: -0.02em;
-  --text-display-lg: clamp(2.6rem, 6vw, 5rem);
-  --text-display-lg--line-height: 0.98;
-  --text-display-lg--letter-spacing: -0.015em;
-  --text-display-md: clamp(2rem, 4vw, 3.25rem);
-  --text-display-md--line-height: 1.02;
-  --text-display-md--letter-spacing: -0.01em;
-  --text-display-sm: 1.75rem;
-  --text-display-sm--line-height: 1.1;
-  --text-eyebrow: 0.75rem;
-  --text-eyebrow--line-height: 1;
-  --text-eyebrow--letter-spacing: 0.14em;
+  --text-display-xl: clamp(3rem, 7.4vw, 6.25rem);
+  --text-display-xl--line-height: 1.02;
+  --text-display-xl--letter-spacing: -0.035em;
+  --text-display-lg: clamp(2.3rem, 5vw, 4rem);
+  --text-display-lg--line-height: 1.05;
+  --text-display-lg--letter-spacing: -0.03em;
+  --text-display-md: clamp(1.75rem, 3.2vw, 2.5rem);
+  --text-display-md--line-height: 1.1;
+  --text-display-md--letter-spacing: -0.025em;
+  --text-display-sm: 1.5rem;
+  --text-display-sm--line-height: 1.2;
+  --text-eyebrow: 0.8125rem;
+  --text-eyebrow--line-height: 1.2;
+  --text-eyebrow--letter-spacing: -0.005em;
 
-  /* Radii (8px grid) */
-  --radius-control: 14px;
-  --radius-tile: 20px;
-  --radius-card: 28px;
-  --radius-sheet: 32px;
+  /* Radii (continuous-feeling, 8px grid) */
+  --radius-control: 12px;
+  --radius-tile: 22px;
+  --radius-card: 32px;
+  --radius-sheet: 34px;
 
   /* Motion timing (CSS transitions); springs live in motion.ts */
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-liquid: cubic-bezier(0.65, 0, 0.35, 1);
   --ease-soft: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-apple: cubic-bezier(0.25, 0.1, 0.25, 1);
   --duration-fast: 140ms;
   --duration-base: 240ms;
   --duration-slow: 520ms;
@@ -134,6 +169,8 @@
 
   --animate-shimmer: shimmer 1.6s var(--ease-liquid) infinite;
   --animate-breathe: breathe 2.8s ease-in-out infinite;
+  --animate-marquee: marquee 60s linear infinite;
+  --animate-marquee-reverse: marquee 70s linear infinite reverse;
 
   @keyframes shimmer {
     from {
@@ -152,6 +189,14 @@
     50% {
       opacity: 1;
       transform: scale(1.08);
+    }
+  }
+  @keyframes marquee {
+    from {
+      transform: translate3d(0, 0, 0);
+    }
+    to {
+      transform: translate3d(-50%, 0, 0);
     }
   }
 }

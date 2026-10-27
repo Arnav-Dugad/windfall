@@ -172,7 +172,7 @@ export default function NewRequest() {
         /* ignore */
       }
       void qc.invalidateQueries({ queryKey: ["my-requests"] });
-      toast({ message: "Your request is live. Patrons can see it now.", tone: "sage" });
+      toast({ message: "Your request is live. Patrons can see it now.", tone: "positive" });
       navigate(`/seeker/requests/${request.id}`, { replace: true });
     },
     onError: (e) => setError(e.message),
@@ -198,7 +198,7 @@ export default function NewRequest() {
               {i < step ? " (done)" : ""}
             </span>
             <m.span
-              className="block h-full origin-left rounded-full bg-gold"
+              className="block h-full origin-left rounded-full bg-accent"
               initial={false}
               animate={{ scaleX: i <= step ? 1 : 0 }}
               transition={{ duration: 0.6, ease: ease.outExpo }}
@@ -254,7 +254,7 @@ export default function NewRequest() {
             {step === 4 && !draft.documentKey ? "Skip for now" : "Continue"} <ArrowRight className="size-4" aria-hidden />
           </Button>
         ) : (
-          <Button variant="gold" size="lg" magnetic onClick={() => publish.mutate()} disabled={publish.isPending}>
+          <Button variant="accent" size="lg" magnetic onClick={() => publish.mutate()} disabled={publish.isPending}>
             {publish.isPending ? "Publishing…" : "Publish my request"}
           </Button>
         )}
@@ -498,7 +498,7 @@ function ProofStep({ draft, set }: { draft: Draft; set: SetFn }) {
           ["Pending review", !!draft.documentKey],
           ["Verified", false],
         ].map(([label, on], i) => (
-          <li key={String(label)} className={cn("rounded-tile px-2 py-3", on ? "bg-gold-soft text-gold-ink" : "bg-surface-2 text-ink-3")}>
+          <li key={String(label)} className={cn("rounded-tile px-2 py-3", on ? "bg-accent-soft text-accent-ink" : "bg-surface-2 text-ink-3")}>
             <span className="block text-[11px] tracking-[0.08em] uppercase">Step {i + 1}</span>
             {label}
           </li>
@@ -526,7 +526,7 @@ function ReviewStep({ draft, preview, total, goTo }: { draft: Draft; preview: Re
           <div key={k} className="flex items-start gap-4 px-4 py-3.5">
             <dt className="w-24 shrink-0 text-[13.5px] text-ink-3">{k}</dt>
             <dd className="min-w-0 flex-1 text-[14.5px] break-words">{v}</dd>
-            <button onClick={() => goTo(s)} className="text-[13px] font-medium text-gold-ink hover:underline ring-focus rounded">
+            <button onClick={() => goTo(s)} className="text-[13px] font-medium text-accent-ink hover:underline ring-focus rounded">
               Edit
             </button>
           </div>

@@ -37,6 +37,8 @@ interface AvatarProps {
   /** Rounded square for cards; circle for lists. */
   shape?: "circle" | "card";
   monogram?: boolean;
+  /** Load immediately (top-of-deck / hero images). */
+  priority?: boolean;
 }
 
 export const Avatar = memo(function Avatar({
@@ -47,6 +49,7 @@ export const Avatar = memo(function Avatar({
   className,
   shape = "circle",
   monogram = true,
+  priority = false,
 }: AvatarProps) {
   const art = useMemo(() => {
     const h = hash(seed);
@@ -82,9 +85,11 @@ export const Avatar = memo(function Avatar({
         <img
           src={photoUrl}
           alt=""
-          loading="lazy"
+          loading={priority ? "eager" : "lazy"}
+          fetchPriority={priority ? "high" : "auto"}
           decoding="async"
-          className={cn("size-full object-cover", blur && "scale-110 blur-xl")}
+          draggable={false}
+          className={cn("size-full object-cover select-none", blur && "scale-125 blur-2xl")}
         />
       ) : (
         <svg viewBox="0 0 100 100" preserveAspectRatio="xMidYMid slice" className="size-full">
@@ -108,7 +113,7 @@ export const Avatar = memo(function Avatar({
       )}
       {monogram && !photoUrl && initial && (
         <span
-          className="display absolute inset-0 grid place-items-center leading-none text-[#1d1a15]/80"
+          className="display absolute inset-0 grid place-items-center leading-none text-white/90"
           style={{ fontSize: shape === "card" ? "34cqw" : "48cqw" }}
         >
           {anonymous ? "·" : initial}

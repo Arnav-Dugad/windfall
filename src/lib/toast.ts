@@ -3,7 +3,7 @@
 export interface Toast {
   id: number;
   message: string;
-  tone?: "neutral" | "gold" | "sage" | "danger";
+  tone?: "neutral" | "accent" | "positive" | "danger";
   action?: { label: string; onClick: () => void };
   duration?: number;
 }

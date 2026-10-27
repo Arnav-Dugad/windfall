@@ -103,8 +103,8 @@ function run(particles: Particle[], gravity: number, drag: number) {
 
 /** Gold coins and sparks bursting from a point (e.g. the confirm button). */
 export function coinBurst(x: number, y: number, intensity = 1) {
-  const gold = readVar("--wf-gold", "#c3a370");
-  const goldInk = readVar("--wf-gold-ink", "#7a5a26");
+  const gold = readVar("--wf-accent", "#c3a370");
+  const goldInk = readVar("--wf-accent-ink", "#7a5a26");
   const colors = [gold, gold, goldInk, "#e9d3a4"];
   const count = Math.round(26 * intensity);
   const ps: Particle[] = [];
@@ -132,11 +132,11 @@ export function coinBurst(x: number, y: number, intensity = 1) {
 /** Brand-colored confetti raining from the top edge and two side cannons. */
 export function confetti() {
   const colors = [
-    readVar("--wf-gold", "#c3a370"),
-    readVar("--wf-sage", "#8aa892"),
+    readVar("--wf-accent", "#c3a370"),
+    readVar("--wf-positive", "#8aa892"),
     readVar("--wf-ink", "#111111"),
     "#efe4cf",
-    readVar("--wf-gold-ink", "#7a5a26"),
+    readVar("--wf-accent-ink", "#7a5a26"),
   ];
   const w = window.innerWidth;
   const h = window.innerHeight;

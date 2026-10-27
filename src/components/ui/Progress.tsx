@@ -2,17 +2,20 @@ import { m } from "motion/react";
 import { duration, ease } from "@/design/motion";
 import { cn } from "@/lib/utils";
 
-/** Funding bar with a liquid fill: a slow ease, a soft leading highlight, and sage once complete. */
+/** Funding bar with a liquid fill: a slow ease, blue while in progress, green once cleared. */
 export function Progress({
   value,
   className,
   label,
   size = "md",
+  onPhoto,
 }: {
   value: number;
   className?: string;
   label?: string;
   size?: "sm" | "md" | "lg";
+  /** Light track + white fill for use over photographs. */
+  onPhoto?: boolean;
 }) {
   const pct = Math.max(0, Math.min(1, value));
   const done = pct >= 1;
@@ -24,7 +27,7 @@ export function Progress({
       aria-valuenow={Math.round(pct * 100)}
       aria-label={label ?? "Funding progress"}
       className={cn(
-        "relative overflow-hidden rounded-full bg-line",
+        onPhoto ? "relative overflow-hidden rounded-full bg-white/25" : "relative overflow-hidden rounded-full bg-fill",
         size === "sm" ? "h-1" : size === "lg" ? "h-2.5" : "h-1.5",
         className,
       )}
@@ -32,7 +35,7 @@ export function Progress({
       <m.div
         className={cn(
           "absolute inset-y-0 left-0 w-full origin-left rounded-full",
-          done ? "bg-sage" : "bg-gradient-to-r from-gold/70 to-gold",
+          done ? "bg-positive" : onPhoto ? "bg-white" : "bg-gradient-to-r from-accent/80 to-accent",
         )}
         initial={false}
         animate={{ scaleX: pct }}
