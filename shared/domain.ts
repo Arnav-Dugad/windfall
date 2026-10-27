@@ -34,6 +34,8 @@ export interface SeekerUpdate {
   kind: UpdateKind;
   body: string;
   createdAt: number;
+  /** Voice note or short video attached to a thank-you (requests/{id}/media/{mediaId}). */
+  mediaId?: string | null;
 }
 
 /** A Seeker's request as the Patron sees it (first name only, ever). */
@@ -58,6 +60,8 @@ export interface RequestCard {
   blurPhoto: boolean;
   createdAt: number;
   isDemo: boolean;
+  /** Dominant portrait colour (hex) for this card's progress bar and stamps. */
+  accent: string | null;
 }
 
 export interface RequestDetail extends RequestCard {

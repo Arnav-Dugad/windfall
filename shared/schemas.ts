@@ -16,7 +16,7 @@ export const deckQuerySchema = z.object({
   country: z.string().length(2).toUpperCase().optional(),
   min: z.coerce.number().int().min(0).optional(),
   max: z.coerce.number().int().min(0).optional(),
-  sort: z.enum(["newest", "closest"]).default("newest"),
+  sort: z.enum(["for_you", "newest", "closest"]).default("for_you"),
   verified: z
     .enum(["1", "0", "true", "false"])
     .transform((v) => v === "1" || v === "true")

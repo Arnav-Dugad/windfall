@@ -11,6 +11,10 @@ export interface UserDoc<T = unknown> {
   photoURL: string | null;
   isDemo: boolean;
   createdAt: T;
+  /** Patron "causes": preferred categories/countries that weight (never filter) the deck. */
+  causes?: { categories: string[]; countries: string[] };
+  /** Typical gift budget, used by "closest to cleared within your budget". */
+  budgetCents?: number;
 }
 
 export interface RequestDoc<T = unknown> {
@@ -39,6 +43,8 @@ export interface RequestDoc<T = unknown> {
   createdAt: T;
   fundedAt: T | null;
   lastGiftId: string | null;
+  /** Dominant colour of the portrait, used for that card's progress bar and stamps. */
+  accent?: string | null;
 }
 
 /** Private ledger row, readable only by the Patron who gave it. */
@@ -62,6 +68,9 @@ export interface GiftDoc<T = unknown> {
   lng: number | null;
   photoUrl: string | null;
   avatarSeed: string;
+  /** Set when the gift was given as part of a Giving Circle / in response to a match challenge. */
+  circleId?: string | null;
+  matchId?: string | null;
 }
 
 /** Public gift-wall entry under requests/{id}/wall — never contains a Patron id. */
@@ -77,6 +86,76 @@ export interface WallDoc<T = unknown> {
 export interface UpdateDoc<T = unknown> {
   kind: UpdateKind;
   body: string;
+  createdAt: T;
+  /** Optional voice note / short video attached to a thank-you (requests/{id}/media/{mediaId}). */
+  mediaId?: string | null;
+}
+
+/** A Seeker's recorded thank-you. Stored inline (Spark has no Cloud Storage), so it's small and short. */
+export interface MediaDoc<T = unknown> {
+  kind: "voice" | "video";
+  dataUrl: string;
+  mime: string;
+  durationSec: number;
+  /** Auto-caption produced on-device while recording (Web Speech API). */
+  caption: string | null;
+  createdAt: T;
+}
+
+/** Giving Circle: several Patrons pooling gifts toward one large debt, with a live shared bar. */
+export interface CircleDoc<T = unknown> {
+  name: string;
+  requestId: string;
+  requestName: string;
+  photoUrl: string | null;
+  createdBy: string;
+  createdByName: string;
+  /** uid → display name */
+  members: Record<string, string>;
+  raisedCents: number;
+  giftCount: number;
+  lastGiftId: string | null;
+  createdAt: T;
+}
+
+/** "Match my gift" challenge created from a Patron's gift; others match it via a link. */
+export interface MatchDoc<T = unknown> {
+  requestId: string;
+  requestName: string;
+  photoUrl: string | null;
+  amountCents: number;
+  fromName: string;
+  createdBy: string;
+  matchCount: number;
+  matchedCents: number;
+  lastGiftId: string | null;
+  createdAt: T;
+}
+
+/** users/{uid}/follows/{requestId} */
+export interface FollowDoc<T = unknown> {
+  createdAt: T;
+  /** Last time the follower looked at this person's activity. */
+  seenAt: T;
+  /** Highest funding milestone (0, 25, 50, 75, 100) the follower has already been told about. */
+  seenPct?: number;
+}
+
+/** users/{uid}/recurring/{id}: "$500 a month to whoever is closest to cleared". */
+export interface RecurringDoc<T = unknown> {
+  amountCents: number;
+  rule: "closest_verified" | "followed" | "cause";
+  active: boolean;
+  lastRunAt: T | null;
+  createdAt: T;
+}
+
+export interface ReportDoc<T = unknown> {
+  requestId: string;
+  reporterId: string;
+  reason: string;
+  note: string | null;
+  status?: "open" | "resolved" | "dismissed";
   createdAt: T;
 }
 

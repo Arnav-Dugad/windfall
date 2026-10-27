@@ -12,7 +12,7 @@ describe("schemas", () => {
 
   it("coerces deck query strings", () => {
     const q = deckQuerySchema.parse({ min: "1000", verified: "1", country: "ng" });
-    expect(q).toMatchObject({ min: 1000, verified: true, country: "NG", sort: "newest", limit: 20 });
+    expect(q).toMatchObject({ min: 1000, verified: true, country: "NG", sort: "for_you", limit: 20 });
     expect(deckQuerySchema.safeParse({ category: "yachts" }).success).toBe(false);
   });
 
