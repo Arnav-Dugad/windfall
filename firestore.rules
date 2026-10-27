@@ -1,6 +1,6 @@
 rules_version = '2';
 
-// Windfall — Firestore security rules.
+// Give — Firestore security rules.
 //
 // There is no server: the gift ledger is enforced here. A gift is one client transaction that writes
 //   gifts/{g}                 private record (Patron only)
@@ -23,6 +23,8 @@ service cloud.firestore {
     function optStr(v, max) { return v == null || (v is string && v.size() <= max); }
     function categories() { return ['medical', 'student_loans', 'rent', 'small_business', 'emergency']; }
     function isRole(role) { return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == role; }
+    // Moderators are listed in admins/{uid} (written only by the seeder).
+    function isAdmin() { return signedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid)); }
 
     // A gift being created in this same batch (didn't exist before, exists after).
     function newGift(id) { return !exists(giftPath(id)) && existsAfter(giftPath(id)); }
@@ -60,10 +62,31 @@ service cloud.firestore {
         && request.resource.data.createdAt == request.time);
       // Role can't change after onboarding; profile fields can.
       allow update: if isSeeder() || (signedIn() && request.auth.uid == uid
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName', 'anonymousByDefault', 'photoURL'])
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName', 'anonymousByDefault', 'photoURL', 'causes', 'budgetCents'])
         && str(request.resource.data.displayName, 1, 40)
-        && request.resource.data.anonymousByDefault is bool);
+        && request.resource.data.anonymousByDefault is bool
+        && (!('causes' in request.resource.data) || (request.resource.data.causes.categories is list && request.resource.data.causes.categories.size() <= 5
+            && request.resource.data.causes.countries is list && request.resource.data.causes.countries.size() <= 10))
+        && (!('budgetCents' in request.resource.data) || (request.resource.data.budgetCents is int && request.resource.data.budgetCents >= 100 && request.resource.data.budgetCents <= 100000000)));
       allow delete: if isSeeder();
+
+      // Follows & recurring pledges are private to their owner.
+      match /follows/{requestId} {
+        allow read, delete: if signedIn() && (request.auth.uid == uid || isSeeder());
+        allow create, update: if isSeeder() || (signedIn() && request.auth.uid == uid
+          && request.resource.data.keys().hasOnly(['createdAt', 'seenAt', 'seenPct'])
+          && request.resource.data.seenAt is timestamp
+          && (!('seenPct' in request.resource.data) || (request.resource.data.seenPct is int
+              && request.resource.data.seenPct >= 0 && request.resource.data.seenPct <= 100)));
+      }
+      match /recurring/{id} {
+        allow read, delete: if signedIn() && (request.auth.uid == uid || isSeeder());
+        allow create, update: if isSeeder() || (signedIn() && request.auth.uid == uid
+          && request.resource.data.keys().hasOnly(['amountCents', 'rule', 'active', 'lastRunAt', 'createdAt'])
+          && request.resource.data.amountCents is int && request.resource.data.amountCents >= 100 && request.resource.data.amountCents <= 10000000
+          && request.resource.data.rule in ['closest_verified', 'followed', 'cause']
+          && request.resource.data.active is bool);
+      }
 
       match /swipes/{requestId} {
         allow read, delete: if signedIn() && (request.auth.uid == uid || isSeeder());
@@ -84,12 +107,21 @@ service cloud.firestore {
       allow update: if isSeeder() || (signedIn() && (
         fundingUpdate(rid, request.resource.data, resource.data)
         || reversalUpdate(rid, request.resource.data, resource.data)
-        || ownerEdit(request.resource.data, resource.data)));
+        || ownerEdit(request.resource.data, resource.data)
+        || moderation(request.resource.data, resource.data)));
+
+      // Moderators can verify/unverify and pause/close a request from the review queue.
+      function moderation(d, o) {
+        return isAdmin()
+          && d.diff(o).affectedKeys().hasOnly(['verification', 'status'])
+          && d.verification in ['unverified', 'pending', 'verified']
+          && (d.status == o.status || (o.status in ['active', 'paused'] && d.status in ['active', 'paused', 'closed']));
+      }
 
       function validNewRequest(d) {
         return d.keys().hasOnly(['seekerId', 'firstName', 'age', 'city', 'country', 'countryCode', 'lat', 'lng', 'category',
             'headline', 'story', 'breakdown', 'goalCents', 'fundedCents', 'giftCount', 'status', 'verification',
-            'verificationRequestedAt', 'avatarSeed', 'photoUrl', 'blurPhoto', 'isDemo', 'createdAt', 'fundedAt', 'lastGiftId'])
+            'verificationRequestedAt', 'avatarSeed', 'photoUrl', 'blurPhoto', 'isDemo', 'createdAt', 'fundedAt', 'lastGiftId', 'accent'])
           && d.seekerId == request.auth.uid
           && str(d.firstName, 1, 30) && str(d.headline, 8, 80) && str(d.story, 80, 2000)
           && str(d.city, 1, 60) && str(d.country, 2, 60) && str(d.countryCode, 2, 2)
@@ -99,6 +131,7 @@ service cloud.firestore {
           && d.fundedCents == 0 && d.giftCount == 0 && d.status == 'active' && d.lastGiftId == null && d.fundedAt == null
           && (d.verification == 'unverified' || (d.verification == 'pending' && d.verificationRequestedAt == request.time))
           && optStr(d.photoUrl, 160000) && d.blurPhoto is bool && d.isDemo == true
+          && optStr(d.get('accent', null), 9)
           && d.createdAt == request.time;
       }
 
@@ -158,12 +191,29 @@ service cloud.firestore {
         }
       }
 
+      // Thank-you voice notes / short videos (inline data, size- and length-capped).
+      match /media/{mediaId} {
+        allow read: if true;
+        allow delete: if isSeeder() || (signedIn() && get(reqPath(rid)).data.seekerId == request.auth.uid);
+        allow create: if isSeeder() || (signedIn()
+          && get(reqPath(rid)).data.seekerId == request.auth.uid
+          && request.resource.data.keys().hasOnly(['kind', 'dataUrl', 'mime', 'durationSec', 'caption', 'createdAt'])
+          && request.resource.data.kind in ['voice', 'video']
+          && str(request.resource.data.dataUrl, 20, 900000)
+          && str(request.resource.data.mime, 3, 60)
+          && request.resource.data.durationSec is number && request.resource.data.durationSec > 0
+          && request.resource.data.durationSec <= (request.resource.data.kind == 'voice' ? 45 : 15)
+          && optStr(request.resource.data.caption, 2000)
+          && request.resource.data.createdAt == request.time);
+      }
+
       match /updates/{updateId} {
         allow read: if true;
         allow delete: if isSeeder();
         allow create: if isSeeder() || (signedIn()
           && get(reqPath(rid)).data.seekerId == request.auth.uid
-          && request.resource.data.keys().hasOnly(['kind', 'body', 'createdAt'])
+          && request.resource.data.keys().hasOnly(['kind', 'body', 'createdAt', 'mediaId'])
+          && optStr(request.resource.data.get('mediaId', null), 64)
           && request.resource.data.kind in ['update', 'thanks']
           && str(request.resource.data.body, 4, 600)
           && request.resource.data.createdAt == request.time);
@@ -188,7 +238,8 @@ service cloud.firestore {
         let before = get(reqPath(g.requestId)).data;
         let after = getAfter(reqPath(g.requestId)).data;
         return g.keys().hasOnly(['patronId', 'requestId', 'seekerId', 'amountCents', 'kind', 'anonymous', 'status',
-            'createdAt', 'requestName', 'category', 'country', 'countryCode', 'city', 'lat', 'lng', 'photoUrl', 'avatarSeed'])
+            'createdAt', 'requestName', 'category', 'country', 'countryCode', 'city', 'lat', 'lng', 'photoUrl', 'avatarSeed',
+            'circleId', 'matchId'])
           && g.patronId == request.auth.uid && isRole('patron')
           && g.amountCents is int && g.amountCents >= 100 && g.amountCents <= 100000000
           && g.kind in ['give', 'clear'] && g.anonymous is bool && g.status == 'settled'
@@ -241,15 +292,80 @@ service cloud.firestore {
       }
     }
 
+    // ---- moderators ------------------------------------------------------------------------------
+    match /admins/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || isSeeder());
+      allow write: if isSeeder();
+    }
+
+    // ---- giving circles: pooled gifts toward one debt ----------------------------------------------
+    match /circles/{cid} {
+      allow read: if true;
+      allow delete: if isSeeder();
+      allow create: if isSeeder() || (signedIn() && isRole('patron')
+        && request.resource.data.keys().hasOnly(['name', 'requestId', 'requestName', 'photoUrl', 'createdBy', 'createdByName', 'members', 'raisedCents', 'giftCount', 'lastGiftId', 'createdAt'])
+        && str(request.resource.data.name, 2, 60) && request.resource.data.createdBy == request.auth.uid
+        && exists(reqPath(request.resource.data.requestId))
+        && request.resource.data.members.keys().hasOnly([request.auth.uid])
+        && request.resource.data.raisedCents == 0 && request.resource.data.giftCount == 0 && request.resource.data.lastGiftId == null
+        && request.resource.data.createdAt == request.time);
+      allow update: if isSeeder() || (signedIn() && (circleJoin(request.resource.data, resource.data) || circleGift(cid, request.resource.data, resource.data)));
+
+      // Anyone signed in can add themselves (and only themselves) as a member.
+      function circleJoin(d, o) {
+        return d.diff(o).affectedKeys().hasOnly(['members'])
+          && d.members.diff(o.members).affectedKeys().hasOnly([request.auth.uid])
+          && str(d.members[request.auth.uid], 1, 40);
+      }
+      // The pooled total only moves with a real gift tagged to this circle, in the same transaction.
+      function circleGift(cid, d, o) {
+        let g = getAfter(giftPath(d.lastGiftId)).data;
+        return d.diff(o).affectedKeys().hasOnly(['raisedCents', 'giftCount', 'lastGiftId', 'members'])
+          && newGift(d.lastGiftId) && g.patronId == request.auth.uid && g.get('circleId', null) == cid
+          && g.requestId == o.requestId
+          && d.raisedCents == o.raisedCents + g.amountCents && d.giftCount == o.giftCount + 1
+          && d.members.diff(o.members).affectedKeys().hasOnly([request.auth.uid]);
+      }
+    }
+
+    // ---- "match my gift" challenges --------------------------------------------------------------
+    match /matches/{mid} {
+      allow read: if true;
+      allow delete: if isSeeder();
+      allow create: if isSeeder() || (signedIn()
+        && request.resource.data.keys().hasOnly(['requestId', 'requestName', 'photoUrl', 'amountCents', 'fromName', 'createdBy', 'matchCount', 'matchedCents', 'lastGiftId', 'createdAt'])
+        && request.resource.data.createdBy == request.auth.uid
+        && get(giftPath(request.resource.data.lastGiftId)).data.patronId == request.auth.uid
+        && get(giftPath(request.resource.data.lastGiftId)).data.amountCents == request.resource.data.amountCents
+        && get(giftPath(request.resource.data.lastGiftId)).data.requestId == request.resource.data.requestId
+        && str(request.resource.data.fromName, 1, 40)
+        && request.resource.data.matchCount == 0 && request.resource.data.matchedCents == 0
+        && request.resource.data.createdAt == request.time);
+      allow update: if isSeeder() || (signedIn() && matchGift(mid, request.resource.data, resource.data));
+
+      function matchGift(mid, d, o) {
+        let g = getAfter(giftPath(d.lastGiftId)).data;
+        return d.diff(o).affectedKeys().hasOnly(['matchCount', 'matchedCents', 'lastGiftId'])
+          && newGift(d.lastGiftId) && g.patronId == request.auth.uid && g.get('matchId', null) == mid
+          && g.requestId == o.requestId
+          && d.matchCount == o.matchCount + 1 && d.matchedCents == o.matchedCents + g.amountCents;
+      }
+    }
+
     // ---- trust & safety ---------------------------------------------------------------------------
     match /reports/{id} {
-      allow read, delete: if isSeeder();
-      allow create: if signedIn()
-        && request.resource.data.keys().hasOnly(['requestId', 'reporterId', 'reason', 'note', 'createdAt'])
+      allow read: if isSeeder() || isAdmin();
+      allow delete: if isSeeder();
+      allow update: if isAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
+        && request.resource.data.status in ['open', 'resolved', 'dismissed'];
+      allow create: if isSeeder() || (signedIn()
+        && request.resource.data.keys().hasOnly(['requestId', 'reporterId', 'reason', 'note', 'status', 'createdAt'])
+        && request.resource.data.get('status', 'open') == 'open'
         && request.resource.data.reporterId == request.auth.uid
         && request.resource.data.reason in ['misleading', 'duplicate', 'offensive', 'privacy', 'other']
         && optStr(request.resource.data.note, 500)
-        && request.resource.data.createdAt == request.time;
+        && request.resource.data.createdAt == request.time);
     }
   }
 }
