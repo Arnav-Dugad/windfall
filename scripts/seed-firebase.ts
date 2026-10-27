@@ -2,6 +2,7 @@
  * Seeds Firebase (Auth + Firestore) with the fictional Windfall roster.
  *
  *   npm run seed            # writes everything, relative to "now"
+ *   npm run seed:emulators  # the same, into the local Auth + Firestore emulators (no production quota)
  *
  * 1. Demo accounts (personas + a `windfall-seeder` service account) are created with the official
  *    `firebase auth:import` command (bcrypt hashes, fixed UIDs) using your Firebase CLI login.
@@ -18,14 +19,15 @@ import { execSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { deleteApp, initializeApp } from "firebase/app";
-import { getAuth, signInWithEmailAndPassword } from "firebase/auth";
-import { collection, doc, getDocs, initializeFirestore, Timestamp, writeBatch, type DocumentReference, type Firestore } from "firebase/firestore";
+import { connectAuthEmulator, getAuth, signInWithEmailAndPassword } from "firebase/auth";
+import { collection, connectFirestoreEmulator, doc, getDocs, initializeFirestore, Timestamp, writeBatch, type DocumentReference, type Firestore } from "firebase/firestore";
 import type { SeedPatron, SeedSeeker } from "../shared/domain";
 import type { CircleDoc, FollowDoc, GiftDoc, MatchDoc, PatronStatsDoc, PersonaDoc, RecurringDoc, ReportDoc, RequestDoc, UserDoc, WallDoc } from "../shared/firestore";
 import { weekIndex } from "../shared/impact";
 import { accentOf } from "./accent";
 
 const PROJECT = "windfall-give-bb8b";
+const EMULATORS = process.env.SEED_EMULATORS === "1";
 const DEMO_PASSWORD = "windfall-demo";
 const DAY = 86_400_000;
 const NOW = Date.now();
@@ -91,8 +93,19 @@ const accounts = [
   { localId: "demo-seeker", email: "seeker@windfall-demo.app", passwordHash: hash(DEMO_PASSWORD), displayName: demoSeeker.firstName },
   { localId: MODERATOR.uid, email: MODERATOR.email, passwordHash: hash(DEMO_PASSWORD), displayName: MODERATOR.displayName },
 ].map((a) => ({ ...a, emailVerified: true }));
-writeFileSync(".cache/auth-import.json", JSON.stringify({ users: accounts }));
-execSync(`npx firebase auth:import .cache/auth-import.json --hash-algo=BCRYPT --project ${PROJECT}`, { stdio: "inherit" });
+if (EMULATORS) {
+  // The Auth emulator takes plain passwords and fixed UIDs through its admin endpoint.
+  const plain = (localId: string) => (localId === "windfall-seeder" ? seederPassword : DEMO_PASSWORD);
+  const res = await fetch(`http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/projects/${PROJECT}/accounts:batchCreate`, {
+    method: "POST",
+    headers: { Authorization: "Bearer owner", "Content-Type": "application/json" },
+    body: JSON.stringify({ users: accounts.map((a) => ({ localId: a.localId, email: a.email, displayName: a.displayName, emailVerified: true, rawPassword: plain(a.localId) })) }),
+  });
+  if (!res.ok) throw new Error(`auth emulator import failed: ${res.status} ${await res.text()}`);
+} else {
+  writeFileSync(".cache/auth-import.json", JSON.stringify({ users: accounts }));
+  execSync(`npx firebase auth:import .cache/auth-import.json --hash-algo=BCRYPT --project ${PROJECT}`, { stdio: "inherit" });
+}
 
 // ---- 2. sign in as the seeder ----------------------------------------------------------------------
 const app = initializeApp({
@@ -101,8 +114,13 @@ const app = initializeApp({
   projectId: PROJECT,
   appId: "1:1072718083580:web:c071662872284259a2ae79",
 });
-await signInWithEmailAndPassword(getAuth(app), "seeder@windfall-demo.app", seederPassword);
+const seederAuth = getAuth(app);
 const db = initializeFirestore(app, {});
+if (EMULATORS) {
+  connectAuthEmulator(seederAuth, "http://127.0.0.1:9099", { disableWarnings: true });
+  connectFirestoreEmulator(db, "127.0.0.1", 8085);
+}
+await signInWithEmailAndPassword(seederAuth, "seeder@windfall-demo.app", seederPassword);
 
 // Batched writer (Firestore allows 500 operations per batch).
 type Op = { ref: DocumentReference; data?: object };

@@ -13,8 +13,10 @@
     "test": "vitest run",
     "test:rules": "firebase emulators:exec --only firestore \"vitest run --config vitest.rules.config.ts\"",
     "test:e2e": "playwright test",
+    "test:e2e:emulators": "firebase emulators:exec --only auth,firestore --project windfall-give-bb8b \"npm run seed:emulators && cross-env E2E_EMULATORS=1 playwright test\"",
     "check": "npm run lint && npm run typecheck && npm run test",
     "seed": "tsx scripts/seed-firebase.ts",
+    "seed:emulators": "cross-env SEED_EMULATORS=1 tsx scripts/seed-firebase.ts",
     "deploy:firebase": "firebase deploy --only firestore,auth",
     "deploy": "npm run build && wrangler deploy"
   },
