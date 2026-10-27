@@ -340,7 +340,7 @@ export function MiniCard({ card, pct, shared = true }: { card: RequestCard; pct?
   return (
     <div className="flex items-center gap-4">
       <m.div layoutId={shared ? `art-${card.id}` : undefined} transition={spring.layout} className="size-16 shrink-0 overflow-hidden rounded-[18px]">
-        <Avatar seed={card.avatarSeed} name={card.firstName} photoUrl={card.photoUrl} blur={card.blurPhoto} shape="card" className="size-full" />
+        <Avatar seed={card.avatarSeed} name={card.firstName} photoUrl={card.photoUrl} blur={card.blurPhoto} shape="card" className="size-full" full />
       </m.div>
       <div className="min-w-0 flex-1">
         <p className="truncate text-[14px] text-ink-2">{card.headline}</p>

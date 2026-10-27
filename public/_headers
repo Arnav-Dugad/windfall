@@ -1,6 +1,6 @@
 # Fonts and portraits have stable URLs: cache for a week, revalidate after.
-# Note: no immutable rule for /assets/* — a missing hashed file falls back to index.html (SPA mode),
-# and that fallback must never be cached as if it were the script.
+# Hashed /assets/* files get a one-year immutable cache from worker/assets.js, which also turns a missing
+# hash into a 404 (never the SPA's index.html), so that rule can't live here.
 /fonts/*
   Cache-Control: public, max-age=604800
   Access-Control-Allow-Origin: *

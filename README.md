@@ -109,8 +109,12 @@ Everything except hosting runs on **Firebase (free Spark plan)**. There is no se
 can’t over-fund a request, fudge a total, double-undo, or unmask an anonymous gift. [`tests/rules`](tests/rules) attacks those rules in
 the Firestore emulator.
 
-The Firebase SDK is loaded lazily: app routes start it immediately; the landing page uses Firestore’s REST API for live stats and the
-people wall, renders a static hero shell before any JavaScript, and only loads Auth at idle.
+**Performance.** The landing page renders a static hero shell before any JavaScript; an inline script starts the hero’s Firestore REST
+requests while the HTML parses and preloads the top card’s portrait; the people wall loads after the hero (sampling ~50 stories instead of
+reading them all); and the Firebase SDK waits for the first interaction (or idle, for visitors who were signed in). App routes download
+their page code alongside the session, the deck and “Finish a debt” share one stories read, and background checks (activity badge, monthly
+pledges, moderator status) wait until the page is idle. Portraits ship as 600×750 and 240×300 WebP with `sizes="auto"`, and hashed build
+files are cached for a year by a tiny asset Worker ([`worker/assets.js`](worker/assets.js)).
 
 ## Local setup
 
@@ -128,12 +132,15 @@ To run against local emulators instead: `npm run dev:emulators` in one terminal 
 |---|---|
 | `npm run check` | oxlint, TypeScript (`tsc -b`) and unit tests (Vitest) |
 | `npm run test:rules` | Security-rules tests in the Firestore emulator (needs Java) |
-| `npm run test:e2e` | Builds, previews and runs the Playwright smoke test (mobile + desktop) |
+| `npm run test:e2e:emulators` | **Preferred:** starts the Auth/Firestore emulators, seeds them, and runs the smoke test there — no production quota used |
+| `npm run test:e2e` | Builds, previews and runs the Playwright smoke test against production Firebase |
 | `PLAYWRIGHT_BASE_URL=https://… npm run test:e2e` | Same smoke test against a deployed URL |
 | `npm run seed` | Recreates the demo accounts (`firebase auth:import`) and rewrites all demo data in Firestore |
+| `npm run seed:emulators` | The same demo data, into running local emulators (`npm run dev:emulators`) |
 | `npm run deploy:firebase` | Deploys `firestore.rules`, indexes and Auth providers |
 | `npm run deploy` | Builds and deploys the SPA to Cloudflare |
-| `npx tsx scripts/fetch-faces.ts N` → `process-faces.ts` → `prune-faces.ts` | Portrait pipeline |
+| `npx tsx scripts/fetch-faces.ts N` → `process-faces.ts` → `prune-faces.ts` → `make-thumbs.ts` | Portrait pipeline (600×750 + 240×300 thumbnails) |
+| `node scripts/perf/*.mjs <url>` | Throttled performance measurements — see [`scripts/perf`](scripts/perf/README.md) |
 | `npx tsx scripts/build-shell.ts <url>` | Regenerates the static landing hero in `index.html` |
 | `npx tsx scripts/render-assets.ts` / `capture-media.ts <url>` | OG image & icons / README screenshots & GIF |
 

@@ -1,4 +1,5 @@
 import { memo, useMemo } from "react";
+import { portraitSrcSet } from "@/lib/photos";
 import { cn } from "@/lib/utils";
 
 // Generated, deterministic portraits: a warm tonal field, soft geometric forms and a serif monogram.
@@ -39,6 +40,8 @@ interface AvatarProps {
   monogram?: boolean;
   /** Load immediately (top-of-deck / hero images). */
   priority?: boolean;
+  /** Always use the full-size portrait — for small targets of a shared-element morph, where it's already cached. */
+  full?: boolean;
 }
 
 export const Avatar = memo(function Avatar({
@@ -50,6 +53,7 @@ export const Avatar = memo(function Avatar({
   shape = "circle",
   monogram = true,
   priority = false,
+  full = false,
 }: AvatarProps) {
   const art = useMemo(() => {
     const h = hash(seed);
@@ -77,6 +81,7 @@ export const Avatar = memo(function Avatar({
         shape === "circle" ? "rounded-full" : "rounded-[inherit]",
         className,
       )}
+      data-portrait={photoUrl && !full && !priority && portraitSrcSet(photoUrl) ? photoUrl : undefined}
       aria-hidden={!name}
       role={name ? "img" : undefined}
       aria-label={name ? `${name}’s portrait` : undefined}
@@ -84,6 +89,9 @@ export const Avatar = memo(function Avatar({
       {photoUrl ? (
         <img
           src={photoUrl}
+          srcSet={full ? undefined : portraitSrcSet(photoUrl)}
+          // Lazy images let the browser pick by their laid-out size ("auto"); hero/deck images are card-sized.
+          sizes={priority ? "(max-width: 480px) 100vw, 420px" : "auto, 600px"}
           alt=""
           loading={priority ? "eager" : "lazy"}
           fetchPriority={priority ? "high" : "auto"}

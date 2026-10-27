@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, ArrowUp, BadgeCheck, ChevronRight, EyeOff, HandCoins, Landmark, Lock, PauseCircle, ShieldCheck, Sparkles, Undo2, X } from "lucide-react";
 import { m, useScroll, useTransform, type MotionValue } from "motion/react";
-import { useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Link, useLocation } from "react-router";
 import { CATEGORY_LABELS, type RequestCard } from "@shared/domain";
 import { formatCompactUSD, formatUSD, formatUSDWhole, remainingCents } from "@shared/money";
@@ -268,11 +268,24 @@ function HeroDeck() {
 
 /** Two slow marquee rows of portraits. Pauses on hover; static for reduced motion. */
 function People() {
-  const people = useQuery({ queryKey: ["people"], queryFn: publicApi.people, staleTime: 120_000 });
+  // The wall is below the fold: fetch it once the hero has its data (so they never compete), or as soon
+  // as the section comes within reach of the viewport, whichever is first.
+  const ref = useRef<HTMLElement>(null);
+  const hero = useQuery({ queryKey: ["featured"], queryFn: publicApi.featured, staleTime: 60_000 });
+  const heroSettled = hero.isSuccess || hero.isError;
+  const [near, setNear] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || near) return;
+    const io = new IntersectionObserver(([e]) => e?.isIntersecting && setNear(true), { rootMargin: "800px 0px" });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [near]);
+  const people = useQuery({ queryKey: ["people"], queryFn: publicApi.people, staleTime: 120_000, enabled: near || heroSettled });
   const cards = people.data?.cards ?? [];
   const rows = [cards.filter((_, i) => i % 2 === 0), cards.filter((_, i) => i % 2 === 1)];
   return (
-    <section id="people" className="scroll-mt-16 overflow-hidden py-20 sm:py-28" aria-labelledby="people-h">
+    <section ref={ref} id="people" className="scroll-mt-16 overflow-hidden py-20 sm:py-28" aria-labelledby="people-h">
       <div className="mx-auto max-w-6xl px-4 text-center sm:px-6">
         <m.div {...reveal} id="people-h">
           <WeightHeading className="display text-display-lg text-balance">
@@ -325,7 +338,7 @@ function PersonTile({ card, hidden }: { card: RequestCard; hidden: boolean }) {
       className="squircle group relative block h-64 w-48 shrink-0 overflow-hidden rounded-[26px] bg-surface-2 shadow-card ring-focus"
     >
       <m.div layoutId={hidden ? undefined : `art-${card.id}`} transition={spring.layout} className="absolute inset-0 overflow-hidden">
-        <Avatar seed={card.avatarSeed} name={card.firstName} photoUrl={card.photoUrl} shape="card" className="absolute inset-0 transition-transform duration-700 ease-(--ease-out-expo) group-hover:scale-[1.06]" />
+        <Avatar seed={card.avatarSeed} name={card.firstName} photoUrl={card.photoUrl} shape="card" className="absolute inset-0 transition-transform duration-700 ease-(--ease-out-expo) group-hover:scale-[1.06]" full />
       </m.div>
       <div aria-hidden className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
       <div className="absolute inset-x-0 bottom-0 p-3.5 text-left text-white">

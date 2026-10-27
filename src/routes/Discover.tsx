@@ -22,7 +22,7 @@ import { toast } from "@/lib/toast";
 import { spring } from "@/design/motion";
 import { announce } from "@/lib/announce";
 import { api, type DeckFilters } from "@/lib/api";
-import { useDocumentTitle, useHotkeys, useMe } from "@/lib/hooks";
+import { useDocumentTitle, useHotkeys, useMe, whenIdle } from "@/lib/hooks";
 import { runDueRecurring } from "@/lib/social";
 import { cn } from "@/lib/utils";
 
@@ -65,25 +65,29 @@ export default function Discover() {
   useEffect(() => {
     void loadStory();
     preloadEffects();
-    // Recurring pledges run when the Patron opens Give (no server on the free plan). Once per page load.
+    // Recurring pledges run when the Patron opens Give (no server on the free plan). Once per page load,
+    // after the deck has had the network to itself.
     if (recurringChecked) return;
-    recurringChecked = true;
-    void runDueRecurring()
-      .then((ran) => {
-        if (!ran.length) return;
-        const total = ran.reduce((s, r) => s + r.amountCents, 0);
-        toast({
-          message: ran.length === 1 ? `Your monthly gift of ${formatUSD(total)} went to ${ran[0]!.name}` : `${ran.length} monthly gifts sent · ${formatUSD(total)}`,
-          tone: "positive",
-          duration: 7000,
-          action: {
-            label: "Undo",
-            onClick: () => void Promise.all(ran.map((r) => api.reverseGift(r.giftId))).then(refreshTotals),
-          },
-        });
-        refreshTotals();
-      })
-      .catch(() => undefined);
+    return whenIdle(() => {
+      if (recurringChecked) return;
+      recurringChecked = true;
+      void runDueRecurring()
+        .then((ran) => {
+          if (!ran.length) return;
+          const total = ran.reduce((s, r) => s + r.amountCents, 0);
+          toast({
+            message: ran.length === 1 ? `Your monthly gift of ${formatUSD(total)} went to ${ran[0]!.name}` : `${ran.length} monthly gifts sent · ${formatUSD(total)}`,
+            tone: "positive",
+            duration: 7000,
+            action: {
+              label: "Undo",
+              onClick: () => void Promise.all(ran.map((r) => api.reverseGift(r.giftId))).then(refreshTotals),
+            },
+          });
+          refreshTotals();
+        })
+        .catch(() => undefined);
+    });
   }, [refreshTotals]);
 
   const putBack = (card: RequestCard, from: SwipeDir) => {

@@ -5,6 +5,7 @@ import { formatUSD, progress, remainingCents } from "@shared/money";
 import { Avatar } from "@/components/ui/Avatar";
 import { Progress } from "@/components/ui/Progress";
 import { spring } from "@/design/motion";
+import { thumbUrl } from "@/lib/photos";
 import { cn } from "@/lib/utils";
 
 /**
@@ -37,12 +38,15 @@ export function SwipeCard({
       {/* "Now Playing" treatment: a blurred, saturated copy of the portrait fills the card… */}
       {card.photoUrl && (
         <img
-          src={card.photoUrl}
+          // Heavily blurred, so the small variant looks identical and arrives first.
+          src={thumbUrl(card.photoUrl)}
           alt=""
           aria-hidden
           draggable={false}
+          decoding="async"
           className="absolute inset-0 size-full scale-125 object-cover blur-2xl saturate-150"
           loading={priority ? "eager" : "lazy"}
+          fetchPriority={priority ? "high" : "auto"}
         />
       )}
       {/* …and the sharp portrait sits on top, dissolving into it so faces are never covered by text. */}

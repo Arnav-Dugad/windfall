@@ -13,6 +13,7 @@ import { EmptyState, ErrorState, Skeleton } from "@/components/ui/Feedback";
 import { Ticker } from "@/components/ui/Ticker";
 import { duration, ease, spring } from "@/design/motion";
 import { useDocumentTitle, useMe } from "@/lib/hooks";
+import { thumbUrl } from "@/lib/photos";
 import { shareLink } from "@/lib/share";
 import { joinCircle, watchCircle, type Circle as CircleT } from "@/lib/social";
 import { useOpenStory } from "@/lib/useOpenStory";
@@ -65,7 +66,7 @@ export default function Circle() {
       </Link>
 
       <section className="squircle relative mt-3 overflow-hidden rounded-[32px] bg-black text-white shadow-float">
-        <img src={request.photoUrl ?? undefined} alt="" aria-hidden className="absolute inset-0 size-full scale-125 object-cover opacity-60 blur-3xl saturate-150" />
+        <img src={request.photoUrl ? thumbUrl(request.photoUrl) : undefined} alt="" aria-hidden className="absolute inset-0 size-full scale-125 object-cover opacity-60 blur-3xl saturate-150" />
         <div className="relative p-6 sm:p-8">
           <div className="flex items-center gap-2 text-[13px] font-semibold text-white/80">
             <UsersRound className="size-4" aria-hidden /> Giving Circle
@@ -73,7 +74,7 @@ export default function Circle() {
           <h1 className="mt-2 text-[2rem] leading-tight font-bold tracking-[-0.025em] text-balance">{circle.name}</h1>
           <button onClick={() => openStory(request)} className="press mt-5 flex items-center gap-3 text-left ring-focus">
             <m.div layoutId={`art-${request.id}`} transition={spring.layout} className="size-16 overflow-hidden rounded-[18px] ring-1 ring-white/20">
-              <Avatar seed={request.avatarSeed} name={request.firstName} photoUrl={request.photoUrl} shape="card" className="size-full" />
+              <Avatar seed={request.avatarSeed} name={request.firstName} photoUrl={request.photoUrl} shape="card" className="size-full" full />
             </m.div>
             <div className="min-w-0">
               <p className="text-[16px] font-semibold">

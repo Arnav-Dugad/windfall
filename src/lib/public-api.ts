@@ -8,7 +8,8 @@ import type { Stats } from "./api";
  */
 const PROJECT = "windfall-give-bb8b";
 const KEY = "AIzaSyATxkXcTU37dYSbc87_QoZGNmtGh65quQo";
-const BASE = `https://firestore.googleapis.com/v1/projects/${PROJECT}/databases/(default)/documents`;
+const HOST = import.meta.env.VITE_FIREBASE_EMULATORS === "1" ? "http://127.0.0.1:8085" : "https://firestore.googleapis.com";
+const BASE = `${HOST}/v1/projects/${PROJECT}/databases/(default)/documents`;
 
 type Value =
   | { stringValue: string }
@@ -32,15 +33,32 @@ function decode(v: Value): unknown {
 }
 const fields = (f: Record<string, Value> = {}) => Object.fromEntries(Object.entries(f).map(([k, v]) => [k, decode(v)]));
 
-async function runQuery(structuredQuery: object): Promise<{ id: string; data: Record<string, unknown> }[]> {
+type Row = { id: string; data: Record<string, unknown> };
+type RawRow = { document?: { name: string; fields?: Record<string, Value> } };
+
+const parseRows = (rows: RawRow[]): Row[] =>
+  rows.filter((r) => r.document).map((r) => ({ id: r.document!.name.split("/").pop()!, data: fields(r.document!.fields) }));
+
+async function runQuery(structuredQuery: object): Promise<Row[]> {
   const res = await fetch(`${BASE}:runQuery?key=${KEY}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ structuredQuery }),
   });
   if (!res.ok) throw new Error("Couldn’t load stories right now.");
-  const rows = (await res.json()) as { document?: { name: string; fields: Record<string, Value> } }[];
-  return rows.filter((r) => r.document).map((r) => ({ id: r.document!.name.split("/").pop()!, data: fields(r.document!.fields) }));
+  return parseRows((await res.json()) as RawRow[]);
+}
+
+/**
+ * index.html starts the hero's two requests while the page is still parsing (see the inline script there).
+ * Each is used once — later refetches go to the network as usual.
+ */
+type Early = { featured?: Promise<RawRow[] | null>; stats?: Promise<{ fields: Record<string, Value> } | null> };
+function takeEarly<K extends keyof Early>(k: K): Early[K] {
+  const early = (window as { __giveLanding?: Early }).__giveLanding;
+  const p = early?.[k];
+  if (early) delete early[k];
+  return p;
 }
 
 function toCard(id: string, d: Record<string, unknown>): RequestCard {
@@ -71,32 +89,66 @@ function toCard(id: string, d: Record<string, unknown>): RequestCard {
 }
 
 const activeWhere = { fieldFilter: { field: { fieldPath: "status" }, op: "EQUAL", value: { stringValue: "active" } } };
+/** Keep in sync with the copy in index.html's early-fetch script. */
+const FEATURED_QUERY = {
+  from: [{ collectionId: "requests" }],
+  where: activeWhere,
+  orderBy: [{ field: { fieldPath: "giftCount" }, direction: "DESCENDING" }],
+  limit: 16,
+};
 
 export const publicApi = {
   async stats(): Promise<Stats> {
-    const res = await fetch(`${BASE}/stats/global?key=${KEY}`);
-    if (!res.ok) return { totalCents: 0, giftCount: 0, debtsCleared: 0 };
-    const d = fields(((await res.json()) as { fields: Record<string, Value> }).fields) as unknown as Stats;
+    let doc = await takeEarly("stats");
+    if (!doc) {
+      const res = await fetch(`${BASE}/stats/global?key=${KEY}`);
+      if (!res.ok) return { totalCents: 0, giftCount: 0, debtsCleared: 0 };
+      doc = (await res.json()) as { fields: Record<string, Value> };
+    }
+    const d = fields(doc.fields) as unknown as Stats;
     return { totalCents: d.totalCents, giftCount: d.giftCount, debtsCleared: d.debtsCleared };
   },
 
   /** Verified, active stories with the most momentum — the landing page's live deck. */
   async featured(): Promise<{ cards: RequestCard[] }> {
-    const rows = await runQuery({
-      from: [{ collectionId: "requests" }],
-      where: activeWhere,
-      orderBy: [{ field: { fieldPath: "giftCount" }, direction: "DESCENDING" }],
-      limit: 16,
-    });
+    const early = await takeEarly("featured");
+    const rows = early ? parseRows(early) : await runQuery(FEATURED_QUERY);
     return { cards: rows.map((r) => toCard(r.id, r.data)).filter((c) => c.verification === "verified").slice(0, 10) };
   },
 
-  /** A varied wall of faces: a day-stable shuffle of active stories (Firestore returns them by id). */
+  /**
+   * A varied wall of faces, stable for the day: ten short runs of stories from evenly spaced, day-rotated
+   * points across every active id — at most 50 document reads instead of reading the whole pool.
+   */
   async people(): Promise<{ cards: RequestCard[] }> {
-    const rows = await runQuery({ from: [{ collectionId: "requests" }], where: activeWhere, limit: 160 });
     let seed = Math.floor(Date.now() / 86_400_000);
     const rand = () => ((seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648);
-    const cards = rows.map((r) => toCard(r.id, r.data)).filter((c) => c.photoUrl);
+    // Ten evenly spaced starting points around the alphabet ("req-aa" … "req-zz"), rotated by the day.
+    const letters = "abcdefghijklmnopqrstuvwxyz";
+    const offset = rand();
+    const starts = Array.from({ length: 10 }, (_, i) => {
+      const slot = Math.floor(((offset + i / 10) % 1) * 676);
+      return `req-${letters[Math.floor(slot / 26)]}${letters[slot % 26]}`;
+    });
+    const sample = Promise.all(
+      starts.map((start) =>
+        runQuery({
+          from: [{ collectionId: "requests" }],
+          where: activeWhere,
+          orderBy: [{ field: { fieldPath: "__name__" }, direction: "ASCENDING" }],
+          startAt: { values: [{ referenceValue: `projects/${PROJECT}/databases/(default)/documents/requests/${start}` }], before: true },
+          limit: 5,
+        }),
+      ),
+    );
+    // Fallback: the first 160 active stories in one query (more reads, same kind of wall).
+    const runs = await sample.catch(async () => [await runQuery({ from: [{ collectionId: "requests" }], where: activeWhere, limit: 160 })]);
+    const seen = new Set<string>();
+    const cards = runs
+      .flat()
+      .filter((r) => !seen.has(r.id) && seen.add(r.id))
+      .map((r) => toCard(r.id, r.data))
+      .filter((c) => c.photoUrl);
     for (let i = cards.length - 1; i > 0; i--) {
       const j = Math.floor(rand() * (i + 1));
       [cards[i], cards[j]] = [cards[j]!, cards[i]!];

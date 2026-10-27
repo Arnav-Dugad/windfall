@@ -187,9 +187,30 @@ export const UNDO_WINDOW_MS = 2 * 60 * 1000;
 const giftsCol = collection(db, "gifts");
 const requestsCol = collection(db, "requests");
 
-async function allRequests(): Promise<{ id: string; r: RequestDoc }[]> {
-  const snap = await getDocs(requestsCol);
-  return snap.docs.map((d) => ({ id: d.id, r: data<RequestDoc>(d) }));
+// Every story, shared briefly between the screens that load together (the deck, "Finish a debt", search,
+// filter counts), so one screen costs one read. Our own writes clear it.
+const SHARE_MS = 10_000;
+let sharedRequests: { at: number; p: Promise<{ id: string; r: RequestDoc }[]> } | null = null;
+
+function allRequests(): Promise<{ id: string; r: RequestDoc }[]> {
+  if (sharedRequests && Date.now() - sharedRequests.at < SHARE_MS) return sharedRequests.p;
+  const p = getDocs(requestsCol).then((snap) => snap.docs.map((d) => ({ id: d.id, r: data<RequestDoc>(d) })));
+  const entry = { at: Date.now(), p };
+  sharedRequests = entry;
+  p.catch(() => {
+    if (sharedRequests === entry) sharedRequests = null;
+  });
+  return p;
+}
+
+/** Forget the shared stories read (after anything that changes a request). */
+export function forgetRequests() {
+  sharedRequests = null;
+}
+
+/** Active stories as cards, from the shared read. */
+export async function activeRequestCards(): Promise<RequestCard[]> {
+  return (await allRequests()).filter(({ r }) => r.status === "active").map(({ id, r }) => toCard(id, r));
 }
 
 async function ensureUserDoc(uid: string, role: Role, displayName: string, photoURL: string | null) {
@@ -417,6 +438,7 @@ export const api = {
     circleId?: string | null;
     matchId?: string | null;
   }): Promise<GiftResult> {
+    forgetRequests();
     const me = requireUser("patron");
     const giftRef = doc(giftsCol);
     const reqRef = doc(db, "requests", input.requestId);
@@ -529,6 +551,7 @@ export const api = {
       const seenPct = pct >= 1 ? 100 : pct >= 0.75 ? 75 : pct >= 0.5 ? 50 : pct >= 0.25 ? 25 : 0;
       void setDoc(doc(db, "users", me.id, "follows", input.requestId), { createdAt: serverTimestamp(), seenAt: serverTimestamp(), seenPct }).catch(() => undefined);
       const t = Date.now();
+      forgetRequests(); // a read that raced the transaction may hold pre-gift totals
       return { gift: { id: giftRef.id, amountCents: out.amount, createdAt: t, undoUntil: t + UNDO_WINDOW_MS }, request: out.card, cleared: out.clears };
     } catch (e) {
       return friendly(e);
@@ -537,6 +560,7 @@ export const api = {
 
   /** Undo within 2 minutes: reverses the gift once and compensates every total. */
   async reverseGift(giftId: string): Promise<{ ok: true; request: RequestCard | null }> {
+    forgetRequests();
     const me = requireUser("patron");
     const giftRef = doc(giftsCol, giftId);
     const statsRef = doc(db, "patronStats", me.id);
@@ -734,6 +758,7 @@ export const api = {
   },
 
   async createRequest(input: NewRequestInput): Promise<{ request: RequestCard }> {
+    forgetRequests();
     const me = requireUser("seeker");
     const geo = countryCentroid(input.countryCode);
     const goalCents = input.breakdown.reduce((s, b) => s + b.amountCents, 0);
@@ -774,6 +799,7 @@ export const api = {
   },
 
   async updateRequest(id: string, patch: { status?: "active" | "paused" | "closed"; blurPhoto?: boolean }) {
+    forgetRequests();
     requireUser("seeker");
     try {
       await updateDoc(doc(db, "requests", id), patch);

@@ -11,7 +11,7 @@ import { Logo, ThemeToggle } from "@/components/ui/Brand";
 import { toast } from "@/lib/toast";
 import { spring } from "@/design/motion";
 import { api } from "@/lib/api";
-import { useIsModerator, useMe, useSignOut } from "@/lib/hooks";
+import { useIdleReady, useIsModerator, useMe, useSignOut } from "@/lib/hooks";
 import { notify } from "@/lib/notify";
 import { activity } from "@/lib/social";
 import { cn } from "@/lib/utils";
@@ -49,7 +49,9 @@ const TABS: Record<"patron" | "seeker", readonly NavItem[]> = {
 
 /** Unread activity for the bell/tab badge, refreshed every couple of minutes; new items can raise a notification. */
 function useUnread(enabled: boolean) {
-  const q = useQuery({ queryKey: ["activity"], queryFn: activity, enabled, staleTime: 60_000, refetchInterval: 120_000, refetchOnWindowFocus: true });
+  // The badge waits until the page has settled so its reads never hold up the deck.
+  const settled = useIdleReady();
+  const q = useQuery({ queryKey: ["activity"], queryFn: activity, enabled: enabled && settled, staleTime: 60_000, refetchInterval: 120_000, refetchOnWindowFocus: true });
   useEffect(() => {
     for (const it of q.data?.items ?? []) if (it.unread) notify(it.id, it.title, it.body, it.card.photoUrl);
   }, [q.data]);
@@ -190,7 +192,7 @@ function AccountMenu({ user }: { user: PublicUser }) {
   const signOut = useSignOut();
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const mod = useIsModerator();
+  const mod = useIsModerator(useIdleReady());
   const year = YEAR;
 
   const toggleAnon = async () => {

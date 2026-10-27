@@ -3,6 +3,7 @@ import {
   collection,
   deleteDoc,
   doc,
+  documentId,
   getDoc,
   getDocs,
   limit,
@@ -33,7 +34,7 @@ import type {
 } from "@shared/firestore";
 import { remainingCents } from "@shared/money";
 import { affinity, buildProfile } from "@shared/rank";
-import { api, ApiError, toCard } from "./api";
+import { activeRequestCards, api, ApiError, forgetRequests, toCard } from "./api";
 import { db } from "./firebase";
 import { getSession } from "./session";
 
@@ -104,17 +105,24 @@ export interface ActivityItem {
  */
 export async function activity(): Promise<{ items: ActivityItem[]; unread: number }> {
   const u = me();
-  const follows = await getDocs(collection(db, "users", u.id, "follows"));
-  const rows = follows.docs.slice(0, 60).map((f) => ({ id: f.id, f: data<FollowDoc>(f) }));
+  const follows = await getDocs(query(collection(db, "users", u.id, "follows"), limit(60)));
+  const rows = follows.docs.map((f) => ({ id: f.id, f: data<FollowDoc>(f) }));
+  // Followed stories in batches of 30 (Firestore's "in" limit) rather than one read each.
+  const reqs = new Map<string, RequestDoc>();
+  const ids = rows.map((r) => r.id);
+  await Promise.all(
+    Array.from({ length: Math.ceil(ids.length / 30) }, (_, i) =>
+      getDocs(query(collection(db, "requests"), where(documentId(), "in", ids.slice(i * 30, i * 30 + 30)))).then((s) =>
+        s.docs.forEach((d) => reqs.set(d.id, data<RequestDoc>(d))),
+      ),
+    ),
+  );
   const items: ActivityItem[] = [];
   await Promise.all(
     rows.map(async ({ id, f }) => {
-      const [rs, ups] = await Promise.all([
-        getDoc(doc(db, "requests", id)),
-        getDocs(query(collection(db, "requests", id, "updates"), orderBy("createdAt", "desc"), limit(3))),
-      ]);
-      if (!rs.exists()) return;
-      const r = data<RequestDoc>(rs);
+      const r = reqs.get(id);
+      if (!r) return;
+      const ups = await getDocs(query(collection(db, "requests", id, "updates"), orderBy("createdAt", "desc"), limit(3)));
       const card = toCard(id, r);
       const pct = r.fundedCents / Math.max(1, r.goalCents);
       const seenAt = ms(f.seenAt);
@@ -400,6 +408,7 @@ export async function setReportStatus(id: string, status: "open" | "resolved" | 
   await updateDoc(doc(db, "reports", id), { status });
 }
 export async function moderate(requestId: string, patch: { verification?: "unverified" | "pending" | "verified"; status?: "active" | "paused" | "closed" }) {
+  forgetRequests();
   await updateDoc(doc(db, "requests", requestId), patch);
 }
 
@@ -449,8 +458,7 @@ export async function wrapped(year = new Date().getFullYear()): Promise<Wrapped>
   };
 }
 
-/** Every active story (cached by Firestore's local cache) — used by search, filters' live counts and finishers. */
-export async function activeCards(): Promise<RequestCard[]> {
-  const s = await getDocs(query(collection(db, "requests"), where("status", "==", "active")));
-  return s.docs.map((d) => toCard(d.id, data<RequestDoc>(d)));
+/** Every active story — used by search, filters' live counts and finishers; shares the deck's read. */
+export function activeCards(): Promise<RequestCard[]> {
+  return activeRequestCards();
 }

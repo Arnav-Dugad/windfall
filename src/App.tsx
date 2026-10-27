@@ -1,11 +1,12 @@
 import { AnimatePresence } from "motion/react";
-import { lazy, Suspense, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, type ReactNode } from "react";
 import { Navigate, Route, Routes, useLocation, type Location } from "react-router";
 import { PageFallback } from "@/components/layout/PageFallback";
 import Landing from "@/routes/Landing";
 import { LiveAnnouncer, Toaster } from "@/components/ui/Toaster";
 import { useMe } from "@/lib/hooks";
 import { homeFor, loadStory } from "@/lib/routes";
+import { startSession } from "@/lib/session";
 
 // Route-level code splitting (the signed-in shell too, so the landing page stays light).
 const AppShell = lazy(() => import("@/components/layout/AppShell"));
@@ -31,6 +32,32 @@ const Settings = lazy(() => import("@/routes/Settings"));
 const Admin = lazy(() => import("@/routes/Admin"));
 const More = lazy(() => import("@/routes/More"));
 
+// Route code downloads alongside the session instead of after it (RequireRole only renders the lazy
+// page once the user is known, which would otherwise make the two load one after the other).
+const ROUTE_CODE: [RegExp, () => Promise<unknown>][] = [
+  [/^\/discover$/, () => import("@/routes/Discover")],
+  [/^\/story\//, loadStory],
+  [/^\/impact$/, () => import("@/routes/Impact")],
+  [/^\/leaderboard$/, () => import("@/routes/Leaderboard")],
+  [/^\/saved$/, () => import("@/routes/Saved")],
+  [/^\/activity$/, () => import("@/routes/Activity")],
+  [/^\/search$/, () => import("@/routes/Search")],
+  [/^\/circles$/, () => import("@/routes/Circles")],
+  [/^\/circles\//, () => import("@/routes/Circle")],
+  [/^\/match\//, () => import("@/routes/Match")],
+  [/^\/settings$/, () => import("@/routes/Settings")],
+  [/^\/admin$/, () => import("@/routes/Admin")],
+  [/^\/more$/, () => import("@/routes/More")],
+  [/^\/wrapped$/, () => import("@/routes/Wrapped")],
+  [/^\/seeker$/, () => import("@/routes/seeker/Dashboard")],
+  [/^\/seeker\/new$/, () => import("@/routes/seeker/NewRequest")],
+  [/^\/seeker\/requests\//, () => import("@/routes/seeker/Manage")],
+];
+if (typeof location !== "undefined" && location.pathname !== "/") {
+  void ROUTE_CODE.find(([re]) => re.test(location.pathname))?.[1]().catch(() => undefined);
+  void import("@/components/layout/AppShell").catch(() => undefined);
+}
+
 const patron = (el: ReactNode) => <RequireRole role="patron">{el}</RequireRole>;
 
 function RequireRole({ role, children }: { role: "patron" | "seeker"; children: ReactNode }) {
@@ -45,6 +72,10 @@ function RequireRole({ role, children }: { role: "patron" | "seeker"; children: 
 
 export function App() {
   const location = useLocation();
+  // Leaving the landing page always needs the session (main.tsx may still be holding it back).
+  useEffect(() => {
+    if (location.pathname !== "/") void startSession();
+  }, [location.pathname]);
   const background = (location.state as { background?: Location } | null)?.background;
 
   return (

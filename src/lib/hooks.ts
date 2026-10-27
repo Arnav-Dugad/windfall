@@ -24,14 +24,32 @@ export function useSignOut() {
 }
 
 /** Whether the signed-in user is on the moderation team (admins/{uid} exists). Keyed by uid so persona switches refresh it. */
-export function useIsModerator() {
+export function useIsModerator(enabled = true) {
   const uid = useMe().data.user?.id;
   return useQuery({
     queryKey: ["is-moderator", uid],
     queryFn: () => import("./social").then((m) => m.isModerator()),
-    enabled: !!uid,
+    enabled: !!uid && enabled,
     staleTime: Infinity,
   });
+}
+
+/** Runs `fn` once the page has been idle for a moment after `delayMs` — for background work that shouldn't compete with first paint. */
+export function whenIdle(fn: () => void, delayMs = 2500) {
+  const idle = window.requestIdleCallback ?? ((cb: () => void) => setTimeout(cb, 300));
+  let handle: number | undefined;
+  const t = setTimeout(() => (handle = idle(fn, { timeout: 3000 }) as unknown as number), delayMs);
+  return () => {
+    clearTimeout(t);
+    if (handle !== undefined) (window.cancelIdleCallback ?? clearTimeout)(handle);
+  };
+}
+
+/** False until the page has settled (see whenIdle); then true for good. */
+export function useIdleReady(delayMs = 2500) {
+  const [ready, setReady] = useState(false);
+  useEffect(() => (ready ? undefined : whenIdle(() => setReady(true), delayMs)), [ready, delayMs]);
+  return ready;
 }
 
 export function useMediaQuery(query: string) {

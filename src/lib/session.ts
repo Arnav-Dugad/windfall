@@ -35,6 +35,17 @@ export function toPublicUser(uid: string, d: UserDoc): PublicUser {
   };
 }
 
+export const SIGNED_IN_KEY = "give:signed-in";
+
+/** True if this browser had a signed-in Give session last time (a hint only — Firebase is the source of truth). */
+export function wasSignedIn() {
+  try {
+    return localStorage.getItem(SIGNED_IN_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
 let started: Promise<void> | null = null;
 /** Loads Firebase Auth + the profile listener (idempotent). */
 export function startSession() {

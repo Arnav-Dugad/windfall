@@ -19,7 +19,7 @@ export function PersonTile({ card, onOpen, index = 0, shared = true }: { card: R
     >
       <button onClick={() => onOpen(card)} className="press squircle group relative block aspect-[4/5] w-full overflow-hidden rounded-[26px] bg-fill text-left shadow-card ring-focus" aria-label={`${card.firstName}, ${card.city}: ${card.headline}`}>
         <m.div layoutId={shared ? `art-${card.id}` : undefined} transition={spring.layout} className="absolute inset-0">
-          <Avatar seed={card.avatarSeed} name={card.firstName} photoUrl={card.photoUrl} blur={card.blurPhoto} shape="card" className="size-full transition-transform duration-700 ease-(--ease-out-expo) group-hover:scale-[1.04]" />
+          <Avatar seed={card.avatarSeed} name={card.firstName} photoUrl={card.photoUrl} blur={card.blurPhoto} shape="card" className="size-full transition-transform duration-700 ease-(--ease-out-expo) group-hover:scale-[1.04]" full />
         </m.div>
         <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/75 via-black/25 to-transparent" aria-hidden />
         <div className="absolute inset-x-0 bottom-0 p-3.5 text-white">
