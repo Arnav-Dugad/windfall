@@ -42,6 +42,47 @@ function squirclePath(ctx: CanvasRenderingContext2D, s: number) {
   ctx.closePath();
 }
 
+// Shapes are pre-rendered once per (shape, colour, blur level) into small sprites and stamped each frame with
+// drawImage. Blurring every particle with ctx.filter on every frame is a software path that can take whole
+// seconds per frame with a few hundred pieces — enough to freeze the page.
+const R = 16; // sprite radius, in sprite units (a particle of size s is drawn at scale s / R)
+const SS = 2; // sprite supersampling, so they stay crisp on 2× screens
+const sprites = new Map<string, HTMLCanvasElement>();
+
+function sprite(shape: Particle["shape"], color: string, blurLevel: number) {
+  const key = `${shape}|${color}|${blurLevel}`;
+  const hit = sprites.get(key);
+  if (hit) return hit;
+  const blur = blurLevel * 2; // in sprite units (a typical particle is about half the sprite's size)
+  const half = R * (shape === "squircle" ? 0.75 : 1) + blur * 3 + 2;
+  const c = document.createElement("canvas");
+  c.width = c.height = Math.ceil(half * 2 * SS);
+  const g = c.getContext("2d")!;
+  g.scale(SS, SS);
+  g.translate(half, half);
+  if (blur) g.filter = `blur(${blur}px)`;
+  g.fillStyle = color;
+  if (shape === "coin") {
+    g.beginPath();
+    g.arc(0, 0, R, 0, Math.PI * 2);
+    g.fill();
+    g.beginPath();
+    g.arc(0, 0, R * 0.62, 0, Math.PI * 2);
+    g.strokeStyle = "rgba(255,255,255,0.5)";
+    g.lineWidth = R / 8;
+    g.stroke();
+  } else if (shape === "squircle") {
+    squirclePath(g, R * 1.4);
+    g.fill();
+  } else {
+    g.beginPath();
+    g.arc(0, 0, shape === "circle" ? R * 0.7 : R, 0, Math.PI * 2);
+    g.fill();
+  }
+  sprites.set(key, c);
+  return c;
+}
+
 function run(particles: Particle[], gravity: number, drag: number) {
   const canvas = document.createElement("canvas");
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -53,18 +94,24 @@ function run(particles: Particle[], gravity: number, drag: number) {
   Object.assign(canvas.style, { position: "fixed", inset: "0", width: `${w}px`, height: `${h}px`, pointerEvents: "none", zIndex: "80" });
   document.body.appendChild(canvas);
   const ctx = canvas.getContext("2d")!;
-  ctx.scale(dpr, dpr);
   // Far particles first, so near ones paint over them.
   particles.sort((a, b) => a.depth - b.depth);
+  // Depth blur (far pieces are softer), quantised to a few sprite levels.
+  const art = particles.map((p) => {
+    const blur = (1 - p.depth) * 3;
+    return sprite(p.shape, p.color, blur > 0.4 ? Math.max(1, Math.round(blur)) : 0);
+  });
 
   let last = performance.now();
   let raf = 0;
   const tick = (now: number) => {
     const dt = Math.min(0.033, (now - last) / 1000);
     last = now;
-    ctx.clearRect(0, 0, w, h);
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
     let alive = 0;
-    for (const p of particles) {
+    for (let i = 0; i < particles.length; i++) {
+      const p = particles[i]!;
       p.life += dt;
       if (p.life > p.maxLife) continue;
       alive++;
@@ -76,40 +123,22 @@ function run(particles: Particle[], gravity: number, drag: number) {
       p.y += p.vy * dt * speed;
       p.rot += p.vrot * dt;
       const fade = Math.min(1, (p.maxLife - p.life) / 0.45);
-      ctx.save();
-      ctx.globalAlpha = fade * (0.55 + p.depth * 0.45);
-      const blur = (1 - p.depth) * 3;
-      ctx.filter = blur > 0.4 ? `blur(${blur.toFixed(1)}px)` : "none";
-      ctx.translate(p.x, p.y);
-      ctx.rotate(p.rot);
-      ctx.fillStyle = p.color;
       const s = p.size * (0.55 + p.depth * 0.6);
-      if (p.shape === "coin") {
-        // Spinning coin: horizontal squash from cos(), rim + face for depth.
-        ctx.scale(Math.max(0.12, Math.abs(Math.cos(p.life * p.spin))), 1);
-        ctx.beginPath();
-        ctx.arc(0, 0, s, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.beginPath();
-        ctx.arc(0, 0, s * 0.62, 0, Math.PI * 2);
-        ctx.strokeStyle = "rgba(255,255,255,0.5)";
-        ctx.lineWidth = 1;
-        ctx.stroke();
-      } else if (p.shape === "squircle") {
-        ctx.scale(1, Math.cos(p.life * p.spin));
-        squirclePath(ctx, s * 1.4);
-        ctx.fill();
-      } else if (p.shape === "circle") {
-        ctx.scale(Math.cos(p.life * p.spin) * 0.5 + 0.5, 1);
-        ctx.beginPath();
-        ctx.arc(0, 0, s * 0.7, 0, Math.PI * 2);
-        ctx.fill();
-      } else {
-        ctx.beginPath();
-        ctx.arc(0, 0, s * (1 - p.life / p.maxLife), 0, Math.PI * 2);
-        ctx.fill();
-      }
-      ctx.restore();
+      // Spin as a squash on one axis: coins and circles turn edge-on, squircles flip.
+      let sx = 1;
+      let sy = 1;
+      let k = s / R;
+      if (p.shape === "coin") sx = Math.max(0.12, Math.abs(Math.cos(p.life * p.spin)));
+      else if (p.shape === "squircle") sy = Math.cos(p.life * p.spin);
+      else if (p.shape === "circle") sx = Math.cos(p.life * p.spin) * 0.5 + 0.5;
+      else k *= 1 - p.life / p.maxLife; // sparks shrink away
+      const cos = Math.cos(p.rot);
+      const sin = Math.sin(p.rot);
+      const scale = (k * dpr) / SS;
+      ctx.setTransform(cos * sx * scale, sin * sx * scale, -sin * sy * scale, cos * sy * scale, p.x * dpr, p.y * dpr);
+      ctx.globalAlpha = fade * (0.55 + p.depth * 0.45);
+      const img = art[i]!;
+      ctx.drawImage(img, -img.width / 2, -img.height / 2);
     }
     if (alive > 0) raf = requestAnimationFrame(tick);
     else canvas.remove();
