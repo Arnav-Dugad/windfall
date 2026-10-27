@@ -92,6 +92,29 @@ function give(
   });
 }
 
+/** The app's undo transaction (src/lib/api.ts → reverseGift), including the circle/match roll-back. */
+function undo(uid: string, giftId: string, opts: { circleId?: string; matchId?: string; fudge?: number } = {}) {
+  const d = db(uid);
+  return runTransaction(d, async (tx) => {
+    const gift = (await tx.get(doc(d, "gifts", giftId))).data()!;
+    const r = (await tx.get(doc(d, "requests", gift.requestId))).data()!;
+    const p = (await tx.get(doc(d, "patronStats", uid))).data()!;
+    const g = (await tx.get(doc(d, "stats/global"))).data()!;
+    const c = opts.circleId ? (await tx.get(doc(d, "circles", opts.circleId))).data()! : null;
+    const m = opts.matchId ? (await tx.get(doc(d, "matches", opts.matchId))).data()! : null;
+    const amount = gift.amountCents as number;
+    tx.update(doc(d, "gifts", giftId), { status: "reversed", reversedAt: serverTimestamp() });
+    tx.update(doc(d, "requests", gift.requestId), { fundedCents: r.fundedCents - amount, giftCount: r.giftCount - 1, lastGiftId: giftId });
+    tx.update(doc(d, "requests", gift.requestId, "wall", giftId), { status: "reversed" });
+    if (c) tx.update(doc(d, "circles", opts.circleId!), { raisedCents: c.raisedCents - amount + (opts.fudge ?? 0), giftCount: c.giftCount - 1, lastGiftId: giftId });
+    if (m) tx.update(doc(d, "matches", opts.matchId!), { matchCount: m.matchCount - 1, matchedCents: m.matchedCents - amount + (opts.fudge ?? 0), lastGiftId: giftId });
+    tx.update(doc(d, "patronStats", uid), { totalCents: p.totalCents - amount, giftCount: p.giftCount - 1, requests: {}, weeks: {}, lastGiftId: giftId, lastGiftAt: serverTimestamp() });
+    tx.update(doc(d, "stats/global"), { totalCents: g.totalCents - amount, giftCount: g.giftCount - 1, debtsCleared: g.debtsCleared, lastGiftId: giftId });
+  });
+}
+/** patronStats allows one write per second per Patron. */
+const pastRateLimit = () => new Promise((r) => setTimeout(r, 1100));
+
 async function seedCircle() {
   await env.withSecurityRulesDisabled((ctx) => setDoc(doc(as(ctx), "circles/c1"), { ...CIRCLE("pat", "Pat"), createdAt: Timestamp.now() }));
 }
@@ -122,6 +145,15 @@ describe("giving circles", () => {
     await seedCircle();
     await assertFails(give("pia", "g3", 4000, { circleId: "c1", requestId: "r2" }));
   });
+
+  it("takes an undone gift back off the pooled total, by exactly its amount", async () => {
+    await seedCircle();
+    await give("pia", "g1", 4000, { circleId: "c1" });
+    await pastRateLimit();
+    await assertFails(undo("pia", "g1", { circleId: "c1", fudge: 1000 }));
+    await assertSucceeds(undo("pia", "g1", { circleId: "c1" }));
+    await assertFails(updateDoc(doc(db("pia"), "circles/c1"), { raisedCents: -4000, giftCount: -1, lastGiftId: "g1" }));
+  });
 });
 
 describe("match my gift", () => {
@@ -143,6 +175,15 @@ describe("match my gift", () => {
     await assertFails(give("pia", "g2", 4000, { matchId: "m1", matchFudge: 500 }));
     await assertFails(give("pia", "g3", 4000, { matchId: "m1", requestId: "r2" }));
     await assertSucceeds(give("pia", "g4", 4000, { matchId: "m1" }));
+  });
+
+  it("uncounts a matching gift that is undone", async () => {
+    await give("pat", "g1", 4000);
+    await setDoc(doc(db("pat"), "matches/m1"), match("pat", "g1", 4000));
+    await give("pia", "g2", 4000, { matchId: "m1" });
+    await pastRateLimit();
+    await assertFails(undo("pia", "g2", { matchId: "m1", fudge: 500 }));
+    await assertSucceeds(undo("pia", "g2", { matchId: "m1" }));
   });
 });
 

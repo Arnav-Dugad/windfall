@@ -317,14 +317,18 @@ service cloud.firestore {
           && d.members.diff(o.members).affectedKeys().hasOnly([request.auth.uid])
           && str(d.members[request.auth.uid], 1, 40);
       }
-      // The pooled total only moves with a real gift tagged to this circle, in the same transaction.
+      // The pooled total only moves with a real gift tagged to this circle, in the same transaction — up for a
+      // new gift, back down when that gift is undone.
       function circleGift(cid, d, o) {
         let g = getAfter(giftPath(d.lastGiftId)).data;
-        return d.diff(o).affectedKeys().hasOnly(['raisedCents', 'giftCount', 'lastGiftId', 'members'])
-          && newGift(d.lastGiftId) && g.patronId == request.auth.uid && g.get('circleId', null) == cid
-          && g.requestId == o.requestId
-          && d.raisedCents == o.raisedCents + g.amountCents && d.giftCount == o.giftCount + 1
-          && d.members.diff(o.members).affectedKeys().hasOnly([request.auth.uid]);
+        return g.patronId == request.auth.uid && g.get('circleId', null) == cid && g.requestId == o.requestId
+          && ((newGift(d.lastGiftId)
+                && d.diff(o).affectedKeys().hasOnly(['raisedCents', 'giftCount', 'lastGiftId', 'members'])
+                && d.raisedCents == o.raisedCents + g.amountCents && d.giftCount == o.giftCount + 1
+                && d.members.diff(o.members).affectedKeys().hasOnly([request.auth.uid]))
+              || (reversedGift(d.lastGiftId)
+                && d.diff(o).affectedKeys().hasOnly(['raisedCents', 'giftCount', 'lastGiftId'])
+                && d.raisedCents == o.raisedCents - g.amountCents && d.giftCount == o.giftCount - 1));
       }
     }
 
@@ -346,9 +350,9 @@ service cloud.firestore {
       function matchGift(mid, d, o) {
         let g = getAfter(giftPath(d.lastGiftId)).data;
         return d.diff(o).affectedKeys().hasOnly(['matchCount', 'matchedCents', 'lastGiftId'])
-          && newGift(d.lastGiftId) && g.patronId == request.auth.uid && g.get('matchId', null) == mid
-          && g.requestId == o.requestId
-          && d.matchCount == o.matchCount + 1 && d.matchedCents == o.matchedCents + g.amountCents;
+          && g.patronId == request.auth.uid && g.get('matchId', null) == mid && g.requestId == o.requestId
+          && ((newGift(d.lastGiftId) && d.matchCount == o.matchCount + 1 && d.matchedCents == o.matchedCents + g.amountCents)
+              || (reversedGift(d.lastGiftId) && d.matchCount == o.matchCount - 1 && d.matchedCents == o.matchedCents - g.amountCents));
       }
     }
 

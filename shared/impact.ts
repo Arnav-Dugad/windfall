@@ -1,8 +1,13 @@
 // Pure impact math shared by the API and unit tests.
 
-const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+export const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
 /** Week index counted from the Unix epoch, aligned to Mondays. */
+/** First millisecond of a weekIndex() week (Monday 00:00 UTC). */
+export function weekStart(week: number): number {
+  return week * WEEK_MS - 3 * 24 * 60 * 60 * 1000;
+}
+
 export function weekIndex(ts: number): number {
   // 1970-01-01 was a Thursday; shift so weeks start on Monday.
   return Math.floor((ts + 3 * 24 * 60 * 60 * 1000) / WEEK_MS);
