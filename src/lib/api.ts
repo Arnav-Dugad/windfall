@@ -13,12 +13,15 @@ import {
   deleteDoc,
   doc,
   getDoc,
+  getDocFromCache,
   getDocs,
+  getDocsFromCache,
   limit,
   orderBy,
   query,
   runTransaction,
   serverTimestamp,
+  Timestamp,
   setDoc,
   updateDoc,
   where,
@@ -30,7 +33,7 @@ import {
 import type { Category, GiftKind, PublicUser, RequestCard, RequestDetail, Role, SeekerUpdate } from "@shared/domain";
 import type { CircleDoc, GiftDoc, GlobalStatsDoc, MatchDoc, PatronStatsDoc, PersonaDoc, RequestDoc, UpdateDoc, UserDoc, WallDoc } from "@shared/firestore";
 import { countryCentroid } from "@shared/geo";
-import { generosityIndex, givingStreakWeeks, weekIndex, weeklySeries } from "@shared/impact";
+import { generosityIndex, givingStreakWeeks, WEEK_MS, weekIndex, weekStart, weeklySeries } from "@shared/impact";
 import { clampGift, remainingCents } from "@shared/money";
 import type { NarrativeInput } from "@shared/narrative";
 import { buildProfile, rankForYou } from "@shared/rank";
@@ -50,7 +53,7 @@ export class ApiError extends Error {
 }
 
 /** Firestore/Auth errors → friendly messages. */
-function friendly(err: unknown): never {
+export function friendly(err: unknown): never {
   if (err instanceof ApiError) throw err;
   const code = (err as { code?: string })?.code ?? "";
   const map: Record<string, [number, string]> = {
@@ -64,6 +67,7 @@ function friendly(err: unknown): never {
     "auth/too-many-requests": [429, "Too many attempts. Please wait a minute."],
     unavailable: [503, "You seem to be offline. We’ll sync when you’re back."],
     aborted: [409, "Someone else just gave — please try again."],
+    "resource-exhausted": [429, "Give has reached today’s free usage limit. It resets at midnight Pacific time — please come back then."],
   };
   const hit = map[code];
   if (hit) throw new ApiError(hit[0], hit[1]);
@@ -345,14 +349,20 @@ export const api = {
   },
 
   // ---- patron deck -------------------------------------------------------------------------------
-  async deck(f: DeckFilters): Promise<{ cards: RequestCard[] }> {
+  /**
+   * The Patron's deck. `fromCache` builds it from Firestore's offline cache only (no network) so a returning
+   * Patron sees cards instantly; it rejects when the cache has no stories yet.
+   */
+  async deck(f: DeckFilters, opts: { fromCache?: boolean } = {}): Promise<{ cards: RequestCard[] }> {
     const u = requireUser("patron");
+    const cache = opts.fromCache;
     const [reqs, swipes, gifts, profileDoc] = await Promise.all([
-      allRequests(),
-      getDocs(collection(db, "users", u.id, "swipes")),
-      getDocs(query(giftsCol, where("patronId", "==", u.id))),
-      getDoc(doc(db, "users", u.id)),
+      cache ? getDocsFromCache(requestsCol).then((s) => s.docs.map((d) => ({ id: d.id, r: data<RequestDoc>(d) }))) : allRequests(),
+      (cache ? getDocsFromCache : getDocs)(collection(db, "users", u.id, "swipes")),
+      (cache ? getDocsFromCache : getDocs)(query(giftsCol, where("patronId", "==", u.id))),
+      cache ? getDocFromCache(doc(db, "users", u.id)).catch(() => null) : getDoc(doc(db, "users", u.id)),
     ]);
+    if (cache && !reqs.length) throw new ApiError(404, "No cached stories yet");
     const hidden = new Set([...swipes.docs.map((d) => d.id), ...gifts.docs.filter((g) => data<GiftDoc>(g).status === "settled").map((g) => data<GiftDoc>(g).requestId)]);
     let cards = reqs
       .filter(({ id, r }) => r.status === "active" && !hidden.has(id))
@@ -367,7 +377,7 @@ export const api = {
     else {
       // "For you": learns from this Patron's gifts and causes, with an exploration slot every fourth card.
       const myGifts = gifts.docs.map((g) => data<GiftDoc>(g));
-      const causes = (profileDoc.data() as UserDoc | undefined)?.causes ?? { categories: [], countries: [] };
+      const causes = (profileDoc?.data() as UserDoc | undefined)?.causes ?? { categories: [], countries: [] };
       cards = rankForYou(cards, buildProfile(myGifts, causes), Date.now(), Math.floor(Date.now() / 3_600_000));
     }
     return { cards: cards.slice(0, 80) };
@@ -566,49 +576,107 @@ export const api = {
     const statsRef = doc(db, "patronStats", me.id);
     const globalRef = doc(db, "stats", "global");
     try {
-      const card = await runTransaction(db, async (tx) => {
-        const gsnap = await tx.get(giftRef);
-        if (!gsnap.exists()) throw new ApiError(404, "Gift not found.");
-        const gift = gsnap.data() as GiftDoc<{ toMillis(): number }>;
-        if (gift.status === "reversed") return null;
-        if (Date.now() - gift.createdAt.toMillis() > UNDO_WINDOW_MS) throw new ApiError(409, "The undo window for this gift has closed.");
-        const reqRef = doc(db, "requests", gift.requestId);
-        const [rs, ps, gs] = await Promise.all([tx.get(reqRef), tx.get(statsRef), tx.get(globalRef)]);
-        const r = rs.data() as RequestDoc;
-        const p = ps.data() as PatronStatsDoc;
-        const g = gs.data() as GlobalStatsDoc;
-        const now = serverTimestamp();
-        const wasFunded = r.status === "funded";
-        tx.update(giftRef, { status: "reversed", reversedAt: now });
-        tx.update(reqRef, {
-          fundedCents: r.fundedCents - gift.amountCents,
-          giftCount: r.giftCount - 1,
-          lastGiftId: giftId,
-          ...(wasFunded ? { status: "active", fundedAt: null } : {}),
+      // The leaderboard counts people helped and weeks given in; only drop this gift's person/week if no other
+      // settled gift of this Patron still accounts for it (otherwise give-then-undo would inflate the index).
+      const first = await getDoc(giftRef);
+      if (!first.exists()) throw new ApiError(404, "Gift not found.");
+      const pre = first.data() as GiftDoc<Timestamp>;
+      const at = pre.createdAt.toMillis();
+      const week = weekIndex(at);
+      const others = (s: { docs: { id: string; data(): unknown }[] }) => s.docs.some((d) => d.id !== giftId && (d.data() as GiftDoc).status === "settled");
+      const [samePerson, sameWeek] = await Promise.all([
+        getDocs(query(giftsCol, where("patronId", "==", me.id), where("requestId", "==", pre.requestId))),
+        getDocs(
+          query(
+            giftsCol,
+            where("patronId", "==", me.id),
+            where("createdAt", ">=", Timestamp.fromMillis(weekStart(week))),
+            where("createdAt", "<", Timestamp.fromMillis(weekStart(week) + WEEK_MS)),
+          ),
+        ),
+      ]);
+      const keepPerson = others(samePerson);
+      const keepWeek = others(sameWeek);
+
+      const attempt = () =>
+        runTransaction(db, async (tx) => {
+          const gsnap = await tx.get(giftRef);
+          if (!gsnap.exists()) throw new ApiError(404, "Gift not found.");
+          const gift = gsnap.data() as GiftDoc<{ toMillis(): number }>;
+          if (gift.status === "reversed") return null;
+          if (Date.now() - gift.createdAt.toMillis() > UNDO_WINDOW_MS) throw new ApiError(409, "The undo window for this gift has closed.");
+          const reqRef = doc(db, "requests", gift.requestId);
+          const circleRef = gift.circleId ? doc(db, "circles", gift.circleId) : null;
+          const matchRef = gift.matchId ? doc(db, "matches", gift.matchId) : null;
+          const [rs, ps, gs, cs, msnap] = await Promise.all([
+            tx.get(reqRef),
+            tx.get(statsRef),
+            tx.get(globalRef),
+            circleRef ? tx.get(circleRef) : null,
+            matchRef ? tx.get(matchRef) : null,
+          ]);
+          const r = rs.data() as RequestDoc;
+          const p = ps.data() as PatronStatsDoc;
+          const g = gs.data() as GlobalStatsDoc;
+          const now = serverTimestamp();
+          const wasFunded = r.status === "funded";
+          tx.update(giftRef, { status: "reversed", reversedAt: now });
+          tx.update(reqRef, {
+            fundedCents: r.fundedCents - gift.amountCents,
+            giftCount: r.giftCount - 1,
+            lastGiftId: giftId,
+            ...(wasFunded ? { status: "active", fundedAt: null } : {}),
+          });
+          tx.update(doc(db, "requests", gift.requestId, "wall", giftId), { status: "reversed" });
+          // A gift made inside a Giving Circle or for a "match my gift" challenge comes off those totals too.
+          if (circleRef && cs?.exists()) {
+            const c = cs.data() as CircleDoc;
+            tx.update(circleRef, { raisedCents: c.raisedCents - gift.amountCents, giftCount: c.giftCount - 1, lastGiftId: giftId });
+          }
+          if (matchRef && msnap?.exists()) {
+            const m_ = msnap.data() as MatchDoc;
+            tx.update(matchRef, { matchCount: m_.matchCount - 1, matchedCents: m_.matchedCents - gift.amountCents, lastGiftId: giftId });
+          }
+          const cleared = { ...p.cleared };
+          if (wasFunded) delete cleared[gift.requestId];
+          const requests = { ...p.requests };
+          if (!keepPerson) delete requests[gift.requestId];
+          const weeks = { ...p.weeks };
+          if (!keepWeek) delete weeks[String(week)];
+          tx.update(statsRef, {
+            totalCents: p.totalCents - gift.amountCents,
+            giftCount: p.giftCount - 1,
+            cleared,
+            requests,
+            weeks,
+            lastGiftId: giftId,
+            lastGiftAt: now,
+          });
+          tx.update(globalRef, {
+            totalCents: g.totalCents - gift.amountCents,
+            giftCount: g.giftCount - 1,
+            debtsCleared: g.debtsCleared - (wasFunded ? 1 : 0),
+            lastGiftId: giftId,
+          });
+          return toCard(gift.requestId, {
+            ...r,
+            fundedCents: r.fundedCents - gift.amountCents,
+            giftCount: r.giftCount - 1,
+            status: wasFunded ? "active" : r.status,
+          });
         });
-        tx.update(doc(db, "requests", gift.requestId, "wall", giftId), { status: "reversed" });
-        const cleared = { ...p.cleared };
-        if (wasFunded) delete cleared[gift.requestId];
-        tx.update(statsRef, {
-          totalCents: p.totalCents - gift.amountCents,
-          giftCount: p.giftCount - 1,
-          cleared,
-          lastGiftId: giftId,
-          lastGiftAt: now,
-        });
-        tx.update(globalRef, {
-          totalCents: g.totalCents - gift.amountCents,
-          giftCount: g.giftCount - 1,
-          debtsCleared: g.debtsCleared - (wasFunded ? 1 : 0),
-          lastGiftId: giftId,
-        });
-        return toCard(gift.requestId, {
-          ...r,
-          fundedCents: r.fundedCents - gift.amountCents,
-          giftCount: r.giftCount - 1,
-          status: wasFunded ? "active" : r.status,
-        });
-      });
+      // The leaderboard allows one write per second per Patron: an instant undo waits out the rest of that second.
+      const wait = at + 1100 - Date.now();
+      if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+      let card: RequestCard | null;
+      try {
+        card = await attempt();
+      } catch (e) {
+        // Another write (e.g. a second gift) may have just used this second; wait it out once more.
+        if ((e as { code?: string }).code !== "permission-denied" || Date.now() - at > 5_000) throw e;
+        await new Promise((r) => setTimeout(r, 1100));
+        card = await attempt();
+      }
       return { ok: true, request: card };
     } catch (e) {
       return friendly(e);
@@ -740,6 +808,15 @@ export const api = {
       api.story(id),
       getDocs(query(collection(db, "requests", id, "wall"), orderBy("createdAt", "desc"), limit(100))),
     ]);
+    // The simulated review finishes here too (not only on the dashboard), so this page flips to Verified.
+    if (request.verification === "pending") {
+      const raw = await getDoc(doc(db, "requests", id));
+      if (raw.exists()) {
+        const r = data<RequestDoc>(raw);
+        await settleVerification(id, r);
+        request.verification = r.verification;
+      }
+    }
     return {
       request,
       gifts: wall.docs

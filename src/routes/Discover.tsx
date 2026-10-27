@@ -42,19 +42,45 @@ export default function Discover() {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const deck = useQuery({ queryKey: ["deck", filters], queryFn: () => api.deck(filters), staleTime: Infinity, gcTime: 0 });
+  // Returning Patrons see their deck straight from the offline cache while the server answers.
+  const cached = useQuery({ queryKey: ["deck-cache", filters], queryFn: () => api.deck(filters, { fromCache: true }), staleTime: Infinity, gcTime: 0, retry: false });
 
   const [queue, setQueue] = useState<RequestCard[]>([]);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [returning, setReturning] = useState<{ id: string; from: SwipeDir } | null>(null);
   const [giving, setGiving] = useState<RequestCard | null>(null);
+  // "Finish a debt" opens the sheet on the exact amount that clears it (reset whenever the sheet closes).
+  const [finishing, setFinishing] = useState(false);
+  if (!giving && finishing) setFinishing(false);
   const [celebrate, setCelebrate] = useState<RequestCard | null>(null);
 
-  // A fresh deck response replaces the local queue (adjusted during render, not in an effect).
-  const [seenDeck, setSeenDeck] = useState(deck.data);
-  if (deck.data && deck.data !== seenDeck) {
-    setSeenDeck(deck.data);
-    setQueue(deck.data.cards);
+  // The local queue follows the deck (adjusted during render, not in an effect). A cached deck shows first;
+  // when the server's arrives, the cards already on screen stay put (with fresh totals) unless they've gone,
+  // and nothing the Patron has already decided on comes back.
+  const filtersKey = JSON.stringify(filters);
+  const [seeded, setSeeded] = useState<{ key: string; from: "cache" | "server"; data: unknown } | null>(null);
+  if (deck.data && seeded?.data !== deck.data) {
+    const server = deck.data.cards;
+    const fromCache = seeded?.key === filtersKey && seeded.from === "cache";
+    setSeeded({ key: filtersKey, from: "server", data: deck.data });
+    if (fromCache) {
+      const decided = new Set(history.map((e) => e.card.id));
+      setQueue((q) => {
+        const fresh = new Map(server.map((c) => [c.id, c]));
+        const keep = q.slice(0, 3).flatMap((c) => fresh.get(c.id) ?? []);
+        const kept = new Set(keep.map((c) => c.id));
+        return [...keep, ...server.filter((c) => !kept.has(c.id) && !decided.has(c.id))];
+      });
+    } else setQueue(server);
+  } else if (!deck.data && cached.data && seeded?.key !== filtersKey) {
+    setSeeded({ key: filtersKey, from: "cache", data: cached.data });
+    setQueue(cached.data.cards);
   }
+  const showingCache = !deck.data && seeded?.key === filtersKey && seeded.from === "cache";
+  const offline = showingCache && !!deck.error;
+  useEffect(() => {
+    if (offline) toast({ message: "Showing saved stories — Give couldn’t reach the server. Pull down or retry to refresh.", duration: 7000 });
+  }, [offline]);
 
   const record = (e: Omit<HistoryEntry, "key" | "at">) => setHistory((h) => [...h.slice(-19), { ...e, key: `h${++entrySeq}`, at: Date.now() }]);
 
@@ -81,7 +107,16 @@ export default function Discover() {
             duration: 7000,
             action: {
               label: "Undo",
-              onClick: () => void Promise.all(ran.map((r) => api.reverseGift(r.giftId))).then(refreshTotals),
+              // One at a time: each undo is a leaderboard write, and those are limited to one per second.
+              onClick: async () => {
+                try {
+                  for (const r of ran) await api.reverseGift(r.giftId);
+                  toast({ message: ran.length === 1 ? "Monthly gift undone" : "Monthly gifts undone", tone: "accent" });
+                } catch (e) {
+                  toast({ message: e instanceof Error ? e.message : "Couldn’t undo", tone: "danger" });
+                }
+                refreshTotals();
+              },
             },
           });
           refreshTotals();
@@ -162,8 +197,8 @@ export default function Discover() {
     void undoEntry(last);
   };
 
+  // Pull-to-refresh keeps the history: gifts in it may still be inside their undo window.
   const refresh = useCallback(async () => {
-    setHistory([]);
     await qc.invalidateQueries({ queryKey: ["active-cards"] });
     await deck.refetch();
   }, [deck, qc]);
@@ -240,9 +275,9 @@ export default function Discover() {
 
         <section aria-label="Story deck" className="mx-auto w-full max-w-[420px]">
           <div className="relative h-[clamp(400px,calc(100dvh-330px),580px)] w-full md:h-[clamp(460px,calc(100dvh-290px),600px)]">
-            {deck.isPending ? (
+            {deck.isPending && !showingCache ? (
               <Skeleton className="absolute inset-0 rounded-card" />
-            ) : deck.error ? (
+            ) : deck.error && !showingCache ? (
               <ErrorState error={deck.error} onRetry={() => deck.refetch()} />
             ) : (
               <SwipeDeck
@@ -268,9 +303,13 @@ export default function Discover() {
                         <Button
                           variant="outline"
                           onClick={async () => {
-                            await api.resetDeck();
-                            setHistory([]);
-                            void deck.refetch();
+                            try {
+                              await api.resetDeck();
+                              setHistory([]);
+                              void deck.refetch();
+                            } catch (e) {
+                              toast({ message: e instanceof Error ? e.message : "Couldn’t bring them back — try again", tone: "danger" });
+                            }
                           }}
                         >
                           <RotateCcw className="size-4" aria-hidden /> Show passed stories again
@@ -320,7 +359,14 @@ export default function Discover() {
 
         <aside className="lg:sticky lg:top-36 lg:pt-10" aria-label="Finish a debt">
           <div className="mx-auto max-w-[420px] lg:max-w-72">
-            <FinishPanel onFinish={(c) => setGiving(c)} onOpen={openStory} excludeIds={seen} />
+            <FinishPanel
+              onFinish={(c) => {
+                setFinishing(true);
+                setGiving(c);
+              }}
+              onOpen={openStory}
+              excludeIds={seen}
+            />
           </div>
         </aside>
       </div>
@@ -331,10 +377,11 @@ export default function Discover() {
       <GiveSheet
         card={giving}
         open={!!giving}
+        suggestedCents={finishing && giving ? remainingCents(giving.goalCents, giving.fundedCents) : undefined}
         anonymousDefault={me?.user?.anonymousByDefault ?? false}
         onCancel={() => {
           // Cards opened from the "Finish a debt" panel weren't in the queue; only deck cards go back.
-          if (giving && deck.data?.cards.some((c) => c.id === giving.id)) putBack(giving, "right");
+          if (giving && (deck.data ?? cached.data)?.cards.some((c) => c.id === giving.id)) putBack(giving, "right");
           setGiving(null);
         }}
         onGiven={(r) => {
@@ -348,6 +395,13 @@ export default function Discover() {
           }
         }}
         onDone={() => setGiving(null)}
+        onUndone={(giftId, request) => {
+          const entry = history.find((e) => e.giftId === giftId);
+          setHistory((h) => h.filter((e) => e.giftId !== giftId));
+          const card = request ?? entry?.card;
+          if (card && (deck.data ?? cached.data)?.cards.some((c) => c.id === card.id)) putBack(card, "right");
+          refreshTotals();
+        }}
       />
 
       <Celebration
