@@ -66,6 +66,7 @@ function toCard(id: string, d: Record<string, unknown>): RequestCard {
     blurPhoto: r.blurPhoto,
     createdAt: r.createdAt,
     isDemo: r.isDemo,
+    accent: r.accent ?? null,
   };
 }
 

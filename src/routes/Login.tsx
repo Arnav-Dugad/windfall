@@ -1,10 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowRight, FlaskConical, Lock } from "lucide-react";
+import { ArrowRight, FlaskConical, Lock, ShieldCheck } from "lucide-react";
 import { AnimatePresence, m } from "motion/react";
 import { useId, useState, type FormEvent, type ReactNode } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import type { Role } from "@shared/domain";
 import { Avatar } from "@/components/ui/Avatar";
+import { Backdrop } from "@/components/ui/Backdrop";
 import { Logo, ThemeToggle } from "@/components/ui/Brand";
 import { Button } from "@/components/ui/Button";
 import { Segmented } from "@/components/ui/Segmented";
@@ -34,7 +35,7 @@ export default function Login() {
   const finishSession = (s: SessionState) => finish(s.user?.role ?? null);
 
   return (
-    <div className="relative flex min-h-dvh flex-col overflow-hidden">
+    <div className="relative isolate flex min-h-dvh flex-col overflow-hidden">
       <Backdrop />
       <header className="mx-auto flex h-14 w-full max-w-6xl items-center justify-between px-4 sm:px-6">
         <Logo />
@@ -44,7 +45,7 @@ export default function Login() {
       <main className="mx-auto grid w-full max-w-6xl flex-1 items-center gap-10 px-4 pt-4 pb-16 sm:px-6 lg:grid-cols-[1fr_440px] lg:gap-20">
         <m.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, ease: ease.outExpo }} className="text-center lg:text-left">
           <h1 className="display text-display-lg text-balance">
-            Welcome to Windfall.
+            Welcome to Give.
             <br />
             <span className="text-ink-3">Generosity, one swipe at a time.</span>
           </h1>
@@ -103,6 +104,11 @@ function DemoPanel({ defaultRole, onDone }: { defaultRole: Role; onDone: (role: 
     mutationFn: (p: { role: Role; persona: string }) => api.demoLogin(p.role, p.persona),
     onSuccess: ({ user }) => onDone(user.role),
   });
+  const navigate = useNavigate();
+  const moderator = useMutation({
+    mutationFn: () => api.demoLogin("patron", "moderator"),
+    onSuccess: () => navigate("/admin", { replace: true }),
+  });
   const list: Persona[] = personas.data ? personas.data[role === "patron" ? "patrons" : "seekers"] : [];
 
   return (
@@ -155,6 +161,16 @@ function DemoPanel({ defaultRole, onDone }: { defaultRole: Role; onDone: (role: 
         )}
       </div>
       {login.error && <FormError>{login.error.message}</FormError>}
+      {role === "patron" && (
+        <button
+          onClick={() => moderator.mutate()}
+          disabled={login.isPending || moderator.isPending}
+          className="press mt-2 flex w-full items-center justify-center gap-2 rounded-full py-2.5 text-[14px] font-semibold text-accent transition-colors hover:bg-fill disabled:opacity-60 ring-focus"
+        >
+          <ShieldCheck className="size-4" aria-hidden /> {moderator.isPending ? "Signing in…" : "Explore as a moderator"}
+        </button>
+      )}
+      {moderator.error && <FormError>{moderator.error.message}</FormError>}
       <p className="mt-3 flex items-center gap-2 border-t border-line px-1 pt-3 text-[12.5px] text-ink-3">
         <FlaskConical className="size-3.5" aria-hidden /> Personas, stories and portraits are fictional (portraits are AI-generated).
       </p>
@@ -297,16 +313,5 @@ function Secure() {
     <p className="flex items-center justify-center gap-1.5 text-[12px] text-ink-3">
       <Lock className="size-3" aria-hidden /> Secured by Firebase Authentication
     </p>
-  );
-}
-
-/** Soft, slow-moving colour fields behind the frosted card. */
-function Backdrop() {
-  return (
-    <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
-      <div className="absolute -top-40 -left-32 size-[560px] rounded-full bg-[#7aa7ff] opacity-30 blur-[120px] dark:opacity-25" />
-      <div className="absolute top-1/3 -right-40 size-[520px] rounded-full bg-[#c4a5ff] opacity-30 blur-[120px] dark:opacity-20" />
-      <div className="absolute -bottom-48 left-1/3 size-[480px] rounded-full bg-[#7fe0c0] opacity-25 blur-[120px] dark:opacity-15" />
-    </div>
   );
 }

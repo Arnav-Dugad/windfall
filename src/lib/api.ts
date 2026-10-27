@@ -28,10 +28,12 @@ import {
   type QueryDocumentSnapshot,
 } from "firebase/firestore";
 import type { Category, GiftKind, PublicUser, RequestCard, RequestDetail, Role, SeekerUpdate } from "@shared/domain";
-import type { GiftDoc, GlobalStatsDoc, PatronStatsDoc, PersonaDoc, RequestDoc, UpdateDoc, UserDoc, WallDoc } from "@shared/firestore";
+import type { CircleDoc, GiftDoc, GlobalStatsDoc, MatchDoc, PatronStatsDoc, PersonaDoc, RequestDoc, UpdateDoc, UserDoc, WallDoc } from "@shared/firestore";
 import { countryCentroid } from "@shared/geo";
 import { generosityIndex, givingStreakWeeks, weekIndex, weeklySeries } from "@shared/impact";
 import { clampGift, remainingCents } from "@shared/money";
+import type { NarrativeInput } from "@shared/narrative";
+import { buildProfile, rankForYou } from "@shared/rank";
 import type { DeckQuery, NewRequestInput } from "@shared/schemas";
 import { auth, db, DEMO_PASSWORD } from "./firebase";
 import { getSession, waitForSession } from "./session";
@@ -104,6 +106,7 @@ export function toCard(id: string, r: RequestDoc): RequestCard {
     blurPhoto: r.blurPhoto,
     createdAt: ms(r.createdAt),
     isDemo: r.isDemo,
+    accent: r.accent ?? null,
   };
 }
 
@@ -207,7 +210,8 @@ export const api = {
     const list = ((snap.exists() ? snap.data().list : []) as PersonaDoc[]) ?? [];
     const toP = (p: PersonaDoc): Persona => ({ persona: p.persona, displayName: p.displayName, blurb: p.blurb, photo: p.photo });
     return {
-      patrons: list.filter((p) => p.role === "patron").map(toP),
+      // The moderator is a patron account with an admins/{uid} doc; it gets its own entry on the login page.
+      patrons: list.filter((p) => p.role === "patron" && p.persona !== "moderator").map(toP),
       seekers: [
         ...list.filter((p) => p.role === "seeker").map(toP),
         { persona: "new", displayName: "A new Seeker", blurb: "Start fresh and walk through the request flow.", photo: null },
@@ -322,10 +326,11 @@ export const api = {
   // ---- patron deck -------------------------------------------------------------------------------
   async deck(f: DeckFilters): Promise<{ cards: RequestCard[] }> {
     const u = requireUser("patron");
-    const [reqs, swipes, gifts] = await Promise.all([
+    const [reqs, swipes, gifts, profileDoc] = await Promise.all([
       allRequests(),
       getDocs(collection(db, "users", u.id, "swipes")),
       getDocs(query(giftsCol, where("patronId", "==", u.id))),
+      getDoc(doc(db, "users", u.id)),
     ]);
     const hidden = new Set([...swipes.docs.map((d) => d.id), ...gifts.docs.filter((g) => data<GiftDoc>(g).status === "settled").map((g) => data<GiftDoc>(g).requestId)]);
     let cards = reqs
@@ -336,11 +341,15 @@ export const api = {
       .filter(({ r }) => f.max === undefined || r.goalCents <= f.max * 100)
       .filter(({ r }) => !f.verified || r.verification === "verified")
       .map(({ id, r }) => toCard(id, r));
-    cards =
-      f.sort === "closest"
-        ? cards.sort((a, b) => b.fundedCents / b.goalCents - a.fundedCents / a.goalCents)
-        : cards.sort((a, b) => b.createdAt - a.createdAt);
-    return { cards: cards.slice(0, 60) };
+    if (f.sort === "closest") cards = cards.sort((a, b) => b.fundedCents / b.goalCents - a.fundedCents / a.goalCents);
+    else if (f.sort === "newest") cards = cards.sort((a, b) => b.createdAt - a.createdAt);
+    else {
+      // "For you": learns from this Patron's gifts and causes, with an exploration slot every fourth card.
+      const myGifts = gifts.docs.map((g) => data<GiftDoc>(g));
+      const causes = (profileDoc.data() as UserDoc | undefined)?.causes ?? { categories: [], countries: [] };
+      cards = rankForYou(cards, buildProfile(myGifts, causes), Date.now(), Math.floor(Date.now() / 3_600_000));
+    }
+    return { cards: cards.slice(0, 80) };
   },
 
   async resetDeck() {
@@ -366,7 +375,7 @@ export const api = {
     const ups = await getDocs(query(collection(db, "requests", id, "updates"), orderBy("createdAt", "desc")));
     const updates: SeekerUpdate[] = ups.docs.map((d) => {
       const u = data<UpdateDoc>(d);
-      return { id: d.id, kind: u.kind, body: u.body, createdAt: ms(u.createdAt) };
+      return { id: d.id, kind: u.kind, body: u.body, createdAt: ms(u.createdAt), mediaId: u.mediaId ?? null };
     });
     return { request: { ...toCard(id, r), updates, lat: r.lat, lng: r.lng } };
   },
@@ -399,15 +408,31 @@ export const api = {
    * One atomic transaction: private gift + request totals + public wall entry + Patron stats + global totals.
    * firestore.rules verifies each write against the others, so the client can't fudge any number.
    */
-  async give(input: { requestId: string; amountCents?: number; kind: GiftKind; anonymous: boolean }): Promise<GiftResult> {
+  async give(input: {
+    requestId: string;
+    amountCents?: number;
+    kind: GiftKind;
+    anonymous: boolean;
+    /** Count this gift toward a Giving Circle and/or a "match my gift" challenge (same transaction). */
+    circleId?: string | null;
+    matchId?: string | null;
+  }): Promise<GiftResult> {
     const me = requireUser("patron");
     const giftRef = doc(giftsCol);
     const reqRef = doc(db, "requests", input.requestId);
     const statsRef = doc(db, "patronStats", me.id);
     const globalRef = doc(db, "stats", "global");
+    const circleRef = input.circleId ? doc(db, "circles", input.circleId) : null;
+    const matchRef = input.matchId ? doc(db, "matches", input.matchId) : null;
     try {
       const out = await runTransaction(db, async (tx) => {
-        const [rs, ps, gs] = await Promise.all([tx.get(reqRef), tx.get(statsRef), tx.get(globalRef)]);
+        const [rs, ps, gs, cs, ms_] = await Promise.all([
+          tx.get(reqRef),
+          tx.get(statsRef),
+          tx.get(globalRef),
+          circleRef ? tx.get(circleRef) : Promise.resolve(null),
+          matchRef ? tx.get(matchRef) : Promise.resolve(null),
+        ]);
         if (!rs.exists()) throw new ApiError(404, "We couldn’t find that story.");
         const r = rs.data() as RequestDoc;
         if (r.status !== "active") {
@@ -440,7 +465,22 @@ export const api = {
           lng: r.lng,
           photoUrl: r.photoUrl?.startsWith("/") ? r.photoUrl : null,
           avatarSeed: r.avatarSeed,
+          ...(circleRef ? { circleId: circleRef.id } : {}),
+          ...(matchRef ? { matchId: matchRef.id } : {}),
         } satisfies GiftDoc);
+        if (circleRef && cs?.exists()) {
+          const c = cs.data() as CircleDoc;
+          tx.update(circleRef, {
+            raisedCents: c.raisedCents + amount,
+            giftCount: c.giftCount + 1,
+            lastGiftId: giftRef.id,
+            members: { ...c.members, [me.id]: me.displayName },
+          });
+        }
+        if (matchRef && ms_?.exists()) {
+          const m_ = ms_.data() as MatchDoc;
+          tx.update(matchRef, { matchCount: m_.matchCount + 1, matchedCents: m_.matchedCents + amount, lastGiftId: giftRef.id });
+        }
         tx.update(reqRef, {
           fundedCents: r.fundedCents + amount,
           giftCount: r.giftCount + 1,
@@ -484,6 +524,10 @@ export const api = {
           }),
         };
       });
+      // Giving auto-follows the person, so their updates and milestones reach this Patron's activity inbox.
+      const pct = out.card.fundedCents / Math.max(1, out.card.goalCents);
+      const seenPct = pct >= 1 ? 100 : pct >= 0.75 ? 75 : pct >= 0.5 ? 50 : pct >= 0.25 ? 25 : 0;
+      void setDoc(doc(db, "users", me.id, "follows", input.requestId), { createdAt: serverTimestamp(), seenAt: serverTimestamp(), seenPct }).catch(() => undefined);
       const t = Date.now();
       return { gift: { id: giftRef.id, amountCents: out.amount, createdAt: t, undoUntil: t + UNDO_WINDOW_MS }, request: out.card, cleared: out.clears };
     } catch (e) {
@@ -555,7 +599,7 @@ export const api = {
   },
 
   // ---- patron insight ----------------------------------------------------------------------------
-  async impact(): Promise<Impact> {
+  async impact(): Promise<Impact & { month: NarrativeInput; memberSince: number | null }> {
     const me = requireUser("patron");
     const [giftSnap, reqs] = await Promise.all([
       getDocs(query(giftsCol, where("patronId", "==", me.id), orderBy("createdAt", "desc"))),
@@ -584,14 +628,25 @@ export const api = {
     }
     const byCategory = new Map<Category, number>();
     for (const r of rows) byCategory.set(r.category, (byCategory.get(r.category) ?? 0) + r.amountCents);
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+    const streakWeeks = givingStreakWeeks(rows.map((r) => r.createdAtMs));
 
     return {
+      month: {
+        monthName: now.toLocaleString("en-US", { month: "long" }),
+        streakWeeks,
+        gifts: rows
+          .filter((r) => r.createdAtMs >= monthStart)
+          .map((r) => ({ amountCents: r.amountCents, firstName: r.requestName, city: r.city, country: r.country, category: r.category, cleared: status.get(r.requestId) === "funded" })),
+      },
+      memberSince: rows.length ? Math.min(...rows.map((r) => r.createdAtMs)) : null,
       totals: {
         totalCents,
         giftCount: rows.length,
         peopleHelped: people.size,
         debtsCleared: cleared.length,
-        streakWeeks: givingStreakWeeks(rows.map((r) => r.createdAtMs)),
+        streakWeeks,
         countries: new Set(rows.map((r) => r.countryCode)).size,
         generosityIndex: generosityIndex({ peopleHelped: people.size, debtsCleared: cleared.length, activeWeeks }),
       },

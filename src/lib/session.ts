@@ -4,7 +4,7 @@ import type { UserDoc } from "@shared/firestore";
 
 /**
  * Session = Firebase Auth user + their live users/{uid} profile.
- * `needsOnboarding` means signed in (e.g. via Google) but no Windfall profile/role yet.
+ * `needsOnboarding` means signed in (e.g. via Google) but no Give profile/role yet.
  * The store itself has no Firebase imports, so the landing page can render without the SDK;
  * `startSession()` loads the wiring (session-firebase.ts) on demand.
  */

@@ -21,6 +21,17 @@ const SeekerDashboard = lazy(() => import("@/routes/seeker/Dashboard"));
 const NewRequest = lazy(() => import("@/routes/seeker/NewRequest"));
 const ManageRequest = lazy(() => import("@/routes/seeker/Manage"));
 const NotFound = lazy(() => import("@/routes/NotFound"));
+const Activity = lazy(() => import("@/routes/Activity"));
+const Search = lazy(() => import("@/routes/Search"));
+const Circles = lazy(() => import("@/routes/Circles"));
+const Circle = lazy(() => import("@/routes/Circle"));
+const Match = lazy(() => import("@/routes/Match"));
+const Wrapped = lazy(() => import("@/routes/Wrapped"));
+const Settings = lazy(() => import("@/routes/Settings"));
+const Admin = lazy(() => import("@/routes/Admin"));
+const More = lazy(() => import("@/routes/More"));
+
+const patron = (el: ReactNode) => <RequireRole role="patron">{el}</RequireRole>;
 
 function RequireRole({ role, children }: { role: "patron" | "seeker"; children: ReactNode }) {
   const { data, isPending, needsOnboarding } = useMe();
@@ -77,6 +88,14 @@ export function App() {
                 </RequireRole>
               }
             />
+            <Route path="/activity" element={patron(<Activity />)} />
+            <Route path="/search" element={patron(<Search />)} />
+            <Route path="/circles" element={patron(<Circles />)} />
+            <Route path="/circles/:id" element={patron(<Circle />)} />
+            <Route path="/match/:id" element={patron(<Match />)} />
+            <Route path="/settings" element={patron(<Settings />)} />
+            <Route path="/admin" element={patron(<Admin />)} />
+            <Route path="/more" element={patron(<More />)} />
             <Route
               path="/seeker"
               element={
@@ -102,6 +121,7 @@ export function App() {
               }
             />
           </Route>
+          <Route path="/wrapped" element={patron(<Wrapped />)} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Suspense>

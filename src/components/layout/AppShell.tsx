@@ -1,9 +1,9 @@
-import { useQueryClient } from "@tanstack/react-query";
-import { Bookmark, Layers, LogOut, Plus, Sparkles, Trophy, UserRound, Home, EyeOff } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Bell, Bookmark, Ellipsis, EyeOff, Gift, Home, Layers, LogOut, Plus, Search, Settings, ShieldCheck, Sparkles, Trophy, UserRound, UsersRound } from "lucide-react";
 import { m } from "motion/react";
 import { DropdownMenu } from "radix-ui";
-import { Suspense } from "react";
-import { NavLink, Outlet, useLocation, useNavigate } from "react-router";
+import { Suspense, useEffect } from "react";
+import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router";
 import type { PublicUser } from "@shared/domain";
 import { Avatar } from "@/components/ui/Avatar";
 import { DemoBadge } from "@/components/ui/Badge";
@@ -11,14 +11,21 @@ import { Logo, ThemeToggle } from "@/components/ui/Brand";
 import { toast } from "@/lib/toast";
 import { spring } from "@/design/motion";
 import { api } from "@/lib/api";
-import { useMe, useSignOut } from "@/lib/hooks";
+import { useIsModerator, useMe, useSignOut } from "@/lib/hooks";
+import { notify } from "@/lib/notify";
+import { activity } from "@/lib/social";
 import { cn } from "@/lib/utils";
 import { PageFallback } from "./PageFallback";
 
-const NAV = {
+const YEAR = new Date().getFullYear();
+
+type NavItem = { to: string; label: string; icon: typeof Layers; badge?: boolean };
+
+const NAV: Record<"patron" | "seeker", readonly NavItem[]> = {
   patron: [
     { to: "/discover", label: "Discover", icon: Layers },
-    { to: "/saved", label: "Maybe later", icon: Bookmark },
+    { to: "/search", label: "Search", icon: Search },
+    { to: "/circles", label: "Circles", icon: UsersRound },
     { to: "/impact", label: "Impact", icon: Sparkles },
     { to: "/leaderboard", label: "Generosity", icon: Trophy },
   ],
@@ -26,13 +33,36 @@ const NAV = {
     { to: "/seeker", label: "My requests", icon: Home },
     { to: "/seeker/new", label: "New request", icon: Plus },
   ],
-} as const;
+};
+
+/** Phones get five tabs; the rest of the patron pages live under More. */
+const TABS: Record<"patron" | "seeker", readonly NavItem[]> = {
+  patron: [
+    { to: "/discover", label: "Discover", icon: Layers },
+    { to: "/search", label: "Search", icon: Search },
+    { to: "/activity", label: "Activity", icon: Bell, badge: true },
+    { to: "/impact", label: "Impact", icon: Sparkles },
+    { to: "/more", label: "More", icon: Ellipsis },
+  ],
+  seeker: NAV.seeker,
+};
+
+/** Unread activity for the bell/tab badge, refreshed every couple of minutes; new items can raise a notification. */
+function useUnread(enabled: boolean) {
+  const q = useQuery({ queryKey: ["activity"], queryFn: activity, enabled, staleTime: 60_000, refetchInterval: 120_000, refetchOnWindowFocus: true });
+  useEffect(() => {
+    for (const it of q.data?.items ?? []) if (it.unread) notify(it.id, it.title, it.body, it.card.photoUrl);
+  }, [q.data]);
+  return q.data?.unread ?? 0;
+}
 
 export default function AppShell() {
   const { data } = useMe();
   const user = data?.user ?? null;
   const items = user ? NAV[user.role] : [];
+  const tabs = user ? TABS[user.role] : [];
   const location = useLocation();
+  const unread = useUnread(user?.role === "patron");
 
   return (
     <div className="min-h-dvh">
@@ -69,6 +99,16 @@ export default function AppShell() {
           )}
           <div className="ml-auto flex items-center gap-1 md:ml-0">
             <DemoBadge className="sm:hidden" label="Demo" />
+            {user?.role === "patron" && (
+              <Link
+                to="/activity"
+                className="press relative hidden size-9 place-items-center rounded-full text-ink-2 transition-colors hover:bg-fill hover:text-ink md:grid ring-focus"
+                aria-label={unread ? `Activity, ${unread} unread` : "Activity"}
+              >
+                <Bell className="size-[18px]" aria-hidden />
+                {unread > 0 && <Badge n={unread} className="absolute top-0.5 right-0.5" />}
+              </Link>
+            )}
             <ThemeToggle />
             {user ? <AccountMenu user={user} /> : <NavLink to="/login" className="ml-2 text-[14px] font-medium ring-focus">Sign in</NavLink>}
           </div>
@@ -87,12 +127,27 @@ export default function AppShell() {
         </m.div>
       </Suspense>
 
-      {items.length > 0 && <TabBar items={items} />}
+      {tabs.length > 0 && <TabBar items={tabs} unread={unread} />}
     </div>
   );
 }
 
-function TabBar({ items }: { items: readonly { to: string; label: string; icon: typeof Layers }[] }) {
+function Badge({ n, className }: { n: number; className?: string }) {
+  return (
+    <m.span
+      key={n}
+      initial={{ scale: 0.4 }}
+      animate={{ scale: 1 }}
+      transition={spring.snappy}
+      className={cn("grid h-4 min-w-4 place-items-center rounded-full bg-[#ff3b30] px-1 text-[10px] leading-none font-bold text-white ring-2 ring-canvas num", className)}
+      aria-hidden
+    >
+      {n > 9 ? "9+" : n}
+    </m.span>
+  );
+}
+
+function TabBar({ items, unread }: { items: readonly NavItem[]; unread: number }) {
   return (
     <nav
       aria-label="Primary"
@@ -116,8 +171,12 @@ function TabBar({ items }: { items: readonly { to: string; label: string; icon: 
                 {isActive && (
                   <m.span layoutId="tab-dot" transition={spring.snappy} className="absolute inset-0 rounded-full bg-fill" />
                 )}
-                <item.icon className="relative size-[22px]" aria-hidden strokeWidth={isActive ? 2.2 : 1.8} />
-                {item.label}
+                <span className="relative">
+                  <item.icon className="size-[22px]" aria-hidden strokeWidth={isActive ? 2.2 : 1.8} />
+                  {item.badge && unread > 0 && <Badge n={unread} className="absolute -top-1 -right-2" />}
+                </span>
+                <span className="relative">{item.label}</span>
+                {item.badge && unread > 0 && <span className="sr-only">, {unread} unread</span>}
               </>
             )}
           </NavLink>
@@ -131,6 +190,8 @@ function AccountMenu({ user }: { user: PublicUser }) {
   const signOut = useSignOut();
   const navigate = useNavigate();
   const qc = useQueryClient();
+  const mod = useIsModerator();
+  const year = YEAR;
 
   const toggleAnon = async () => {
     const { user: u } = await api.updateProfile(!user.anonymousByDefault);
@@ -162,9 +223,26 @@ function AccountMenu({ user }: { user: PublicUser }) {
           </div>
           <DropdownMenu.Separator className="my-1 h-px bg-line" />
           {user.role === "patron" && (
-            <MenuItem onSelect={toggleAnon} icon={EyeOff}>
-              {user.anonymousByDefault ? "Show my name on gifts" : "Give anonymously by default"}
-            </MenuItem>
+            <>
+              <MenuItem onSelect={() => navigate("/saved")} icon={Bookmark}>
+                Maybe later
+              </MenuItem>
+              <MenuItem onSelect={() => navigate("/wrapped")} icon={Gift}>
+                {year} Wrapped
+              </MenuItem>
+              <MenuItem onSelect={() => navigate("/settings")} icon={Settings}>
+                Settings
+              </MenuItem>
+              {mod.data && (
+                <MenuItem onSelect={() => navigate("/admin")} icon={ShieldCheck}>
+                  Moderation
+                </MenuItem>
+              )}
+              <DropdownMenu.Separator className="my-1 h-px bg-line" />
+              <MenuItem onSelect={toggleAnon} icon={EyeOff}>
+                {user.anonymousByDefault ? "Show my name on gifts" : "Give anonymously by default"}
+              </MenuItem>
+            </>
           )}
           <MenuItem onSelect={() => navigate("/login")} icon={UserRound}>
             Switch demo persona

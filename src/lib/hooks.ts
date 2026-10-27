@@ -1,9 +1,9 @@
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMotionValue, useSpring } from "motion/react";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import { getSession, subscribeSession } from "./session";
 
-/** Current Windfall user from Firebase Auth + their live profile (same shape the screens always used). */
+/** Current Give user from Firebase Auth + their live profile (same shape the screens always used). */
 export function useMe() {
   const s = useSyncExternalStore(subscribeSession, getSession, getSession);
   return {
@@ -21,6 +21,17 @@ export function useSignOut() {
     await api.logout();
     qc.clear();
   }, [qc]);
+}
+
+/** Whether the signed-in user is on the moderation team (admins/{uid} exists). Keyed by uid so persona switches refresh it. */
+export function useIsModerator() {
+  const uid = useMe().data.user?.id;
+  return useQuery({
+    queryKey: ["is-moderator", uid],
+    queryFn: () => import("./social").then((m) => m.isModerator()),
+    enabled: !!uid,
+    staleTime: Infinity,
+  });
 }
 
 export function useMediaQuery(query: string) {
@@ -121,7 +132,7 @@ export function useHotkeys(map: Record<string, (e: KeyboardEvent) => void>, enab
 
 export function useDocumentTitle(title: string) {
   useEffect(() => {
-    document.title = title ? `${title} · Windfall` : "Windfall — Swipe to clear someone's debt";
+    document.title = title ? `${title} · Give` : "Give — Swipe to clear someone's debt";
   }, [title]);
 }
 
