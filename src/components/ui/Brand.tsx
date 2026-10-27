@@ -6,7 +6,7 @@ import { useTheme } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
 import { IconButton } from "./Button";
 
-/** The Windfall mark: an app-icon squircle with a coin caught mid-fall. */
+/** The Give mark: an app-icon squircle with a coin caught mid-fall. */
 export function Mark({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 32 32" className={cn("size-7", className)} aria-hidden>
@@ -26,9 +26,9 @@ export function Mark({ className }: { className?: string }) {
 
 export function Logo({ to = "/", className }: { to?: string; className?: string }) {
   return (
-    <Link to={to} className={cn("group inline-flex items-center gap-2.5 rounded-full ring-focus", className)} aria-label="Windfall home">
+    <Link to={to} className={cn("group inline-flex items-center gap-2.5 rounded-full ring-focus", className)} aria-label="Give home">
       <Mark className="transition-transform duration-(--duration-slow) ease-(--ease-out-expo) group-hover:-rotate-6 group-hover:scale-105" />
-      <span className="display text-[19px] leading-none tracking-[-0.02em]">Windfall</span>
+      <span className="display text-[19px] leading-none tracking-[-0.02em]">Give</span>
     </Link>
   );
 }

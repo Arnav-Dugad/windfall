@@ -1,6 +1,6 @@
 {
-  "name": "Windfall",
-  "short_name": "Windfall",
+  "name": "Give",
+  "short_name": "Give",
   "description": "Swipe right to give. Swipe up to clear someone's debt. A demo.",
   "start_url": "/",
   "display": "standalone",

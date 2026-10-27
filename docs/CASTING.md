@@ -1,13 +1,13 @@
-# Windfall casting brief (for roster-writing agents)
+# Give casting brief (for roster-writing agents)
 
-Windfall is a demo app where wealthy "Patrons" swipe through stories of "Seekers" carrying debt and gift money.
+Give is a demo app where wealthy "Patrons" swipe through stories of "Seekers" carrying debt and gift money.
 **Everyone is fictional.** The portraits are AI-generated (StyleGAN) faces of people who do not exist.
 
 ## Your job
 For every portrait ID in your batch file, open its thumbnail and cast a fictional person who plausibly matches
 the face (apparent age range, apparent gender presentation), then write their profile.
 
-- Thumbnails: `C:\Users\rduga\Desktop\Windfall Website\.cache\faces\thumbs\<id>.jpg` (open with the Read tool)
+- Thumbnails: `C:\Users\rduga\Desktop\Give Website\.cache\faces\thumbs\<id>.jpg` (open with the Read tool)
 - The `photo` field must be exactly `"/people/<id>.webp"`.
 - **Skip** (leave out entirely) any portrait that looks like a child/teen (under ~20), shows two faces,
   or has obvious generation artifacts (melted features, garbled background faces). List skipped ids in your final report.
@@ -19,7 +19,7 @@ Write ONE TypeScript file (path given in your task). It must compile under stric
 import type { SeedSeeker } from "../../domain";
 export const SEEKERS_<N>: SeedSeeker[] = [ /* … */ ];
 ```
-Read `C:\Users\rduga\Desktop\Windfall Website\shared\domain.ts` for `SeedSeeker` (and `SeedPatron` if you cast Patrons).
+Read `C:\Users\rduga\Desktop\Give Website\shared\domain.ts` for `SeedSeeker` (and `SeedPatron` if you cast Patrons).
 
 ## SeedSeeker rules
 - `slug`: kebab-case `firstname-city-<first 4 chars of photo id>` (e.g. `amara-lagos-0065`). Must be unique.
@@ -42,7 +42,7 @@ Read `C:\Users\rduga\Desktop\Windfall Website\shared\domain.ts` for `SeedSeeker`
 - Use plain double-quoted strings; escape inner double quotes; apostrophes are fine.
 
 ## Checks before you finish
-Run (PowerShell or bash) from `C:\Users\rduga\Desktop\Windfall Website`:
+Run (PowerShell or bash) from `C:\Users\rduga\Desktop\Give Website`:
 `npx tsx -e "import('./shared/seed/people/<your file>.ts').then(m=>{const a=Object.values(m)[0];console.log(a.length, new Set(a.map(x=>x.slug)).size, a.every(x=>x.breakdown.reduce((s,b)=>s+b.amountCents,0)>0))})"`
 It must import without errors; slug count must equal length.
 

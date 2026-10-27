@@ -49,7 +49,7 @@ const og = `${base}
 <body style="width:1200px;height:630px;overflow:hidden;position:relative">
   <div style="position:absolute;right:-60px;top:-140px;width:760px;height:760px;border-radius:50%;background:radial-gradient(closest-side,rgba(0,113,227,.18),transparent)"></div>
   <div style="position:absolute;left:80px;top:70px;display:flex;align-items:center;gap:14px">
-    ${mark(46)}<span style="font-size:34px;font-weight:700">Windfall</span>
+    ${mark(46)}<span style="font-size:34px;font-weight:700">Give</span>
     <span style="margin-left:10px;background:rgba(120,120,128,.14);color:#424245;border-radius:999px;padding:7px 14px;font-size:16px;font-weight:600">Demo</span>
   </div>
   <h1 style="position:absolute;left:80px;top:150px;width:560px;font-size:76px;line-height:1;font-weight:700;letter-spacing:-0.04em">
