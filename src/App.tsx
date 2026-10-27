@@ -80,82 +80,85 @@ export function App() {
 
   return (
     <>
-      <Suspense fallback={<PageFallback />}>
-        <Routes location={background ?? location}>
-          <Route path="/" element={<Landing />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/welcome" element={<Welcome />} />
-          <Route element={<AppShell />}>
-            <Route
-              path="/discover"
-              element={
-                <RequireRole role="patron">
-                  <Discover />
-                </RequireRole>
-              }
-            />
-            <Route path="/story/:id" element={<Story />} />
-            <Route
-              path="/impact"
-              element={
-                <RequireRole role="patron">
-                  <Impact />
-                </RequireRole>
-              }
-            />
-            <Route
-              path="/leaderboard"
-              element={
-                <RequireRole role="patron">
-                  <Leaderboard />
-                </RequireRole>
-              }
-            />
-            <Route
-              path="/saved"
-              element={
-                <RequireRole role="patron">
-                  <Saved />
-                </RequireRole>
-              }
-            />
-            <Route path="/activity" element={patron(<Activity />)} />
-            <Route path="/search" element={patron(<Search />)} />
-            <Route path="/circles" element={patron(<Circles />)} />
-            <Route path="/circles/:id" element={patron(<Circle />)} />
-            <Route path="/match/:id" element={patron(<Match />)} />
-            <Route path="/settings" element={patron(<Settings />)} />
-            <Route path="/admin" element={patron(<Admin />)} />
-            <Route path="/more" element={patron(<More />)} />
-            <Route
-              path="/seeker"
-              element={
-                <RequireRole role="seeker">
-                  <SeekerDashboard />
-                </RequireRole>
-              }
-            />
-            <Route
-              path="/seeker/new"
-              element={
-                <RequireRole role="seeker">
-                  <NewRequest />
-                </RequireRole>
-              }
-            />
-            <Route
-              path="/seeker/requests/:id"
-              element={
-                <RequireRole role="seeker">
-                  <ManageRequest />
-                </RequireRole>
-              }
-            />
-          </Route>
-          <Route path="/wrapped" element={patron(<Wrapped />)} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </Suspense>
+      {/* With a story open over it, the page behind is inert: no focus, clicks or screen-reader browsing. */}
+      <div inert={!!background}>
+        <Suspense fallback={<PageFallback />}>
+          <Routes location={background ?? location}>
+            <Route path="/" element={<Landing />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/welcome" element={<Welcome />} />
+            <Route element={<AppShell />}>
+              <Route
+                path="/discover"
+                element={
+                  <RequireRole role="patron">
+                    <Discover />
+                  </RequireRole>
+                }
+              />
+              <Route path="/story/:id" element={<Story />} />
+              <Route
+                path="/impact"
+                element={
+                  <RequireRole role="patron">
+                    <Impact />
+                  </RequireRole>
+                }
+              />
+              <Route
+                path="/leaderboard"
+                element={
+                  <RequireRole role="patron">
+                    <Leaderboard />
+                  </RequireRole>
+                }
+              />
+              <Route
+                path="/saved"
+                element={
+                  <RequireRole role="patron">
+                    <Saved />
+                  </RequireRole>
+                }
+              />
+              <Route path="/activity" element={patron(<Activity />)} />
+              <Route path="/search" element={patron(<Search />)} />
+              <Route path="/circles" element={patron(<Circles />)} />
+              <Route path="/circles/:id" element={patron(<Circle />)} />
+              <Route path="/match/:id" element={patron(<Match />)} />
+              <Route path="/settings" element={patron(<Settings />)} />
+              <Route path="/admin" element={patron(<Admin />)} />
+              <Route path="/more" element={patron(<More />)} />
+              <Route
+                path="/seeker"
+                element={
+                  <RequireRole role="seeker">
+                    <SeekerDashboard />
+                  </RequireRole>
+                }
+              />
+              <Route
+                path="/seeker/new"
+                element={
+                  <RequireRole role="seeker">
+                    <NewRequest />
+                  </RequireRole>
+                }
+              />
+              <Route
+                path="/seeker/requests/:id"
+                element={
+                  <RequireRole role="seeker">
+                    <ManageRequest />
+                  </RequireRole>
+                }
+              />
+            </Route>
+            <Route path="/wrapped" element={patron(<Wrapped />)} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </Suspense>
+      </div>
 
       {/* Story opened from the deck renders over it, so the card can expand into the page. */}
       <AnimatePresence>

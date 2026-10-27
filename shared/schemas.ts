@@ -45,7 +45,8 @@ export const reportSchema = z.object({
 
 export const breakdownItemSchema = z.object({
   label: z.string().trim().min(2, "Add a short label").max(60),
-  amountCents: z.number().int().min(100, "At least $1").max(50_000_000),
+  // Whole dollars: gifts move in dollars, so a cents remainder could never be cleared.
+  amountCents: z.number().int().min(100, "At least $1").max(50_000_000).multipleOf(100, "Whole dollars only"),
 });
 
 export const storyStepSchema = z.object({
@@ -63,8 +64,15 @@ export const storyStepSchema = z.object({
     .max(2000, "Keep it under 2,000 characters"),
 });
 
+/** Requests can ask for up to $500,000 in total (firestore.rules enforces the same ceiling). */
+export const MAX_GOAL_CENTS = 50_000_000;
+
 export const amountStepSchema = z.object({
-  breakdown: z.array(breakdownItemSchema).min(1, "Add at least one item").max(6),
+  breakdown: z
+    .array(breakdownItemSchema)
+    .min(1, "Add at least one item")
+    .max(6)
+    .refine((items) => items.reduce((s, b) => s + b.amountCents, 0) <= MAX_GOAL_CENTS, "The total can be up to $500,000"),
 });
 
 export const newRequestSchema = storyStepSchema.extend({
@@ -75,7 +83,8 @@ export const newRequestSchema = storyStepSchema.extend({
   category: z.enum(CATEGORIES),
   breakdown: amountStepSchema.shape.breakdown,
   blurPhoto: z.boolean().default(false),
-  photoKey: z.string().max(200).nullable().default(null),
+  // Photos are resized on-device and stored inline as a data URL (firestore.rules allows up to 160,000 characters).
+  photoKey: z.string().max(160_000, "That photo is too large — try another").nullable().default(null),
   documentKey: z.string().max(200).nullable().default(null),
 });
 export type NewRequestInput = z.infer<typeof newRequestSchema>;

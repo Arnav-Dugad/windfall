@@ -45,12 +45,13 @@ export function parseQuery(input: string): ParsedQuery {
   let q = ` ${input.toLowerCase().trim()} `;
   const out: ParsedQuery = { countryCodes: [], terms: [], chips: [] };
 
-  const under = q.match(/\b(?:under|below|less than|up to|<)\s*\$?\s*([\d.,]+\s*[km]?)\b/);
+  // ("<" and ">" aren't word characters, so they sit outside the \b group.)
+  const under = q.match(/(?:\b(?:under|below|less than|up to)|<)\s*\$?\s*([\d.,]+\s*[km]?)\b/);
   if (under && !isNaN(money(under[1]!))) {
     out.maxCents = money(under[1]!);
     q = q.replace(under[0], " ");
   }
-  const over = q.match(/\b(?:over|above|more than|at least|>)\s*\$?\s*([\d.,]+\s*[km]?)\b/);
+  const over = q.match(/(?:\b(?:over|above|more than|at least)|>)\s*\$?\s*([\d.,]+\s*[km]?)\b/);
   if (over && !isNaN(money(over[1]!))) {
     out.minCents = money(over[1]!);
     q = q.replace(over[0], " ");
@@ -66,7 +67,8 @@ export function parseQuery(input: string): ParsedQuery {
   for (const [re, cat] of CATEGORY_WORDS) {
     if (re.test(q)) {
       out.category = cat;
-      q = q.replace(re, " ");
+      // Remove every word of that category ("rent arrears" → both), so none becomes a required search term.
+      q = q.replace(new RegExp(re.source, "g"), " ");
       break;
     }
   }

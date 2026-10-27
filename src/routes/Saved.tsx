@@ -23,7 +23,13 @@ export default function Saved() {
   const remove = useMutation({
     mutationFn: (id: string) => api.unswipe(id),
     onMutate: (id) => {
+      const before = qc.getQueryData<Awaited<ReturnType<typeof api.saved>>>(["saved"]);
       qc.setQueryData<Awaited<ReturnType<typeof api.saved>>>(["saved"], (d) => d && { saved: d.saved.filter((s) => s.id !== id) });
+      return { before };
+    },
+    onError: (e, _id, ctx) => {
+      if (ctx?.before) qc.setQueryData(["saved"], ctx.before);
+      toast({ message: e instanceof Error ? e.message : "Couldn’t remove that — please try again", tone: "danger" });
     },
     onSuccess: () => {
       toast({ message: "Removed — they’ll appear in your deck again" });

@@ -149,23 +149,25 @@ export default function NewRequest() {
   };
 
   const publish = useMutation({
-    mutationFn: () =>
-      api.createRequest(
-        newRequestSchema.parse({
-          firstName: draft.firstName,
-          headline: draft.headline,
-          story: draft.story,
-          breakdown: breakdownCents,
-          category: draft.category,
-          city: draft.city,
-          country: country?.name ?? draft.countryCode,
-          countryCode: draft.countryCode,
-          age: draft.age ? Number(draft.age) : null,
-          blurPhoto: draft.blurPhoto,
-          photoKey: draft.photoKey && !draft.photoKey.startsWith("local:") ? draft.photoKey : null,
-          documentKey: draft.documentKey,
-        }),
-      ),
+    mutationFn: () => {
+      // Validate with readable messages (a raw ZodError would show its JSON).
+      const parsed = newRequestSchema.safeParse({
+        firstName: draft.firstName,
+        headline: draft.headline,
+        story: draft.story,
+        breakdown: breakdownCents,
+        category: draft.category,
+        city: draft.city,
+        country: country?.name ?? draft.countryCode,
+        countryCode: draft.countryCode,
+        age: draft.age ? Number(draft.age) : null,
+        blurPhoto: draft.blurPhoto,
+        photoKey: draft.photoKey && !draft.photoKey.startsWith("local:") ? draft.photoKey : null,
+        documentKey: draft.documentKey,
+      });
+      if (!parsed.success) throw new Error(parsed.error.issues[0]?.message ?? "Check your request and try again.");
+      return api.createRequest(parsed.data);
+    },
     onSuccess: ({ request }) => {
       try {
         localStorage.removeItem(DRAFT_KEY);

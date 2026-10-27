@@ -65,10 +65,14 @@ export default function Leaderboard() {
   const { rows, phase } = useRankReplay(q.data?.entries);
 
   const setAnonymous = async (v: boolean) => {
-    const { user } = await api.updateProfile(v);
-    qc.setQueryData(["me"], { user });
-    await qc.invalidateQueries({ queryKey: ["leaderboard"] });
-    toast({ message: v ? "You now appear as Anonymous Patron" : "Your name is shown on the index", tone: "accent" });
+    try {
+      const { user } = await api.updateProfile(v);
+      qc.setQueryData(["me"], { user });
+      await qc.invalidateQueries({ queryKey: ["leaderboard"] });
+      toast({ message: v ? "You now appear as Anonymous Patron" : "Your name is shown on the index", tone: "accent" });
+    } catch (e) {
+      toast({ message: e instanceof Error ? e.message : "Couldn’t change that — please try again", tone: "danger" });
+    }
   };
 
   return (

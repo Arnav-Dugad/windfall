@@ -105,9 +105,13 @@ function DemoPanel({ defaultRole, onDone }: { defaultRole: Role; onDone: (role: 
     onSuccess: ({ user }) => onDone(user.role),
   });
   const navigate = useNavigate();
+  const qc = useQueryClient();
   const moderator = useMutation({
     mutationFn: () => api.demoLogin("patron", "moderator"),
-    onSuccess: () => navigate("/admin", { replace: true }),
+    onSuccess: () => {
+      qc.clear(); // nothing from the previous persona should linger
+      navigate("/admin", { replace: true });
+    },
   });
   const list: Persona[] = personas.data ? personas.data[role === "patron" ? "patrons" : "seekers"] : [];
 

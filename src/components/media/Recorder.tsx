@@ -175,7 +175,8 @@ export function Recorder({ requestId }: { requestId: string }) {
         kind,
         durationSec: phase.seconds,
         caption,
-        body: body.trim() || caption?.slice(0, 280) || (kind === "voice" ? "A voice note to say thank you." : "A short video to say thank you."),
+        // Updates need 4–600 characters: use what was typed, else the caption, else a gentle default.
+        body: [body.trim(), caption?.trim().slice(0, 280) ?? ""].find((t) => t.length >= 4) ?? (kind === "voice" ? "A voice note to say thank you." : "A short video to say thank you."),
       });
     },
     onSuccess: () => {

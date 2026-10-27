@@ -13,7 +13,7 @@ import { spring } from "@/design/motion";
 import { api } from "@/lib/api";
 import { useDocumentTitle, useMe } from "@/lib/hooks";
 import { notificationsEnabled, setNotificationsEnabled } from "@/lib/notify";
-import { deleteRecurring, getPrefs, listRecurring, saveRecurring, savePrefs, setRecurringActive, type Prefs } from "@/lib/social";
+import { deleteRecurring, getPrefs, listRecurring, MAX_CAUSE_PLACES, saveRecurring, savePrefs, setRecurringActive, type Prefs } from "@/lib/social";
 import { toast } from "@/lib/toast";
 import { cn, timeAgo } from "@/lib/utils";
 
@@ -96,10 +96,25 @@ function PrefsForm({ initial }: { initial: Prefs }) {
             </Chip>
           ))}
         </div>
-        <p className="mt-5 mb-2.5 text-[14px] font-medium">Places</p>
+        <p className="mt-5 mb-2.5 flex items-baseline justify-between text-[14px] font-medium">
+          Places
+          <span className="text-[12.5px] font-normal text-ink-3 num">
+            {draft.causes.countries.length}/{MAX_CAUSE_PLACES}
+          </span>
+        </p>
         <div className="flex max-h-44 flex-wrap gap-2 overflow-y-auto no-scrollbar">
           {countries.data?.countries.map((c) => (
-            <Chip key={c.code} on={draft.causes.countries.includes(c.code)} onClick={() => setDraft((d) => ({ ...d, causes: { ...d.causes, countries: toggle(d.causes.countries, c.code) } }))}>
+            <Chip
+              key={c.code}
+              on={draft.causes.countries.includes(c.code)}
+              onClick={() => {
+                if (!draft.causes.countries.includes(c.code) && draft.causes.countries.length >= MAX_CAUSE_PLACES) {
+                  toast({ message: `Pick up to ${MAX_CAUSE_PLACES} places — remove one to add another.` });
+                  return;
+                }
+                setDraft((d) => ({ ...d, causes: { ...d.causes, countries: toggle(d.causes.countries, c.code) } }));
+              }}
+            >
               {c.name}
             </Chip>
           )) ?? <Skeleton className="h-9 w-full rounded-full" />}

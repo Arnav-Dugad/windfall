@@ -196,10 +196,14 @@ function AccountMenu({ user }: { user: PublicUser }) {
   const year = YEAR;
 
   const toggleAnon = async () => {
-    const { user: u } = await api.updateProfile(!user.anonymousByDefault);
-    qc.setQueryData(["me"], { user: u });
-    void qc.invalidateQueries({ queryKey: ["leaderboard"] });
-    toast({ message: u.anonymousByDefault ? "You’ll give anonymously by default" : "Your name will show on gifts", tone: "accent" });
+    try {
+      const { user: u } = await api.updateProfile(!user.anonymousByDefault);
+      qc.setQueryData(["me"], { user: u });
+      void qc.invalidateQueries({ queryKey: ["leaderboard"] });
+      toast({ message: u.anonymousByDefault ? "You’ll give anonymously by default" : "Your name will show on gifts", tone: "accent" });
+    } catch (e) {
+      toast({ message: e instanceof Error ? e.message : "Couldn’t change that — please try again", tone: "danger" });
+    }
   };
 
   return (

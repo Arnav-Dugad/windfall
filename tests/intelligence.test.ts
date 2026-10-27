@@ -66,6 +66,17 @@ describe("search: parseQuery", () => {
     expect(parseQuery("rent under $2,500").category).toBe("rent");
   });
 
+  it("understands < and > as amount limits", () => {
+    expect(parseQuery("medical <$5k").maxCents).toBe(500_000);
+    expect(parseQuery("loans >20k").minCents).toBe(2_000_000);
+  });
+
+  it("drops every word of the matched category, so none becomes a required term", () => {
+    const q = parseQuery("rent arrears under $3,000");
+    expect(q.category).toBe("rent");
+    expect(q.terms).toEqual([]);
+  });
+
   it("returns no filters for an empty query", () => {
     const q = parseQuery("   ");
     expect(q).toMatchObject({ countryCodes: [], terms: [], chips: [] });

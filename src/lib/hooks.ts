@@ -135,7 +135,8 @@ export function useHotkeys(map: Record<string, (e: KeyboardEvent) => void>, enab
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null;
       if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
-      if (t?.closest("[role=dialog]")) return;
+      // Not while a dialog has focus, or while any modal (e.g. a story over the deck) is open at all.
+      if (t?.closest("[role=dialog]") || document.querySelector('[aria-modal="true"]')) return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       const fn = mapRef.current[e.key] ?? mapRef.current[e.key.toLowerCase()];
       if (fn) {

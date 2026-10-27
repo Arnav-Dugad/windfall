@@ -40,6 +40,9 @@ export default function Circle() {
   }
 
   const join = useMutation({ mutationFn: () => joinCircle(id) });
+  const refresh = () => {
+    for (const k of ["impact", "stats", "leaderboard", "circles", "activity", "active-cards"]) void qc.invalidateQueries({ queryKey: [k] });
+  };
   const uid = me?.user?.id;
 
   if (error) return <ErrorState error={error} className="py-24" />;
@@ -155,10 +158,10 @@ export default function Circle() {
         }
         anonymousDefault={me?.user?.anonymousByDefault ?? false}
         onCancel={() => setGiving(false)}
-        onGiven={() => {
-          for (const k of ["impact", "stats", "leaderboard", "circles"]) void qc.invalidateQueries({ queryKey: [k] });
-        }}
+        onGiven={refresh}
+        onUndone={refresh}
         onDone={() => setGiving(false)}
+        doneLabel="Done"
       />
     </main>
   );

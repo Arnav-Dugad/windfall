@@ -34,7 +34,7 @@ import type {
 } from "@shared/firestore";
 import { remainingCents } from "@shared/money";
 import { affinity, buildProfile } from "@shared/rank";
-import { activeRequestCards, api, ApiError, forgetRequests, toCard } from "./api";
+import { activeRequestCards, api, ApiError, forgetRequests, friendly, toCard } from "./api";
 import { db } from "./firebase";
 import { getSession } from "./session";
 
@@ -68,8 +68,12 @@ export async function getPrefs(): Promise<Prefs> {
     budgetCents: u?.budgetCents ?? 500_000,
   };
 }
+/** Matches firestore.rules: up to 5 kinds of debt and 10 places. */
+export const MAX_CAUSE_PLACES = 10;
+
 export async function savePrefs(p: Partial<Prefs>) {
-  await updateDoc(doc(db, "users", me().id), { ...(p.causes ? { causes: p.causes } : {}), ...(p.budgetCents ? { budgetCents: p.budgetCents } : {}) });
+  if (p.causes && p.causes.countries.length > MAX_CAUSE_PLACES) throw new ApiError(400, `Pick up to ${MAX_CAUSE_PLACES} places.`);
+  await updateDoc(doc(db, "users", me().id), { ...(p.causes ? { causes: p.causes } : {}), ...(p.budgetCents ? { budgetCents: p.budgetCents } : {}) }).catch(friendly);
 }
 
 // ---- follows ----------------------------------------------------------------------------------------
@@ -93,6 +97,7 @@ export interface ActivityItem {
   card: RequestCard;
   title: string;
   body: string;
+  /** When it happened (ms), or 0 for milestones, which are a status rather than a timed event. */
   at: number;
   unread: boolean;
   /** Milestones invite "one more push"; cleared items celebrate. */
@@ -155,7 +160,9 @@ export async function activity(): Promise<{ items: ActivityItem[]; unread: numbe
             card,
             title: `${r.firstName} is ${m}% there`,
             body: `${(remainingCents(r.goalCents, r.fundedCents) / 100).toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 })} to go. One more push could finish it.`,
-            at: Math.max(seenAt, ms(r.createdAt)),
+            // A milestone is a status, not a timed event (there's no record of when it was crossed), so it
+            // carries no time and sorts after dated items with the same read state.
+            at: 0,
             unread: m > (f.seenPct ?? 0),
             pct,
           });
@@ -325,25 +332,26 @@ export async function runDueRecurring(): Promise<{ name: string; amountCents: nu
   if (!u || u.role !== "patron") return [];
   const due = (await listRecurring()).filter((r) => r.active && (!r.lastRunAt || Date.now() - r.lastRunAt > RECUR_MS));
   if (!due.length) return [];
-  const [reqs, prefs, follows] = await Promise.all([
-    getDocs(query(collection(db, "requests"), where("status", "==", "active"))),
-    getPrefs(),
-    getDocs(collection(db, "users", u.id, "follows")),
-  ]);
+  const [cards, prefs, follows] = await Promise.all([activeRequestCards(), getPrefs(), getDocs(collection(db, "users", u.id, "follows"))]);
   const followed = new Set(follows.docs.map((d) => d.id));
   const profile = buildProfile([], prefs.causes);
-  const cards = reqs.docs.map((d) => toCard(d.id, data<RequestDoc>(d)));
   const results: { name: string; amountCents: number; giftId: string }[] = [];
   for (const r of due) {
+    // Only ever give within the pledge's rule — if no one fits (e.g. nobody followed yet), try again next visit.
     const pool = cards.filter((c) =>
       r.rule === "followed" ? followed.has(c.id) : r.rule === "cause" ? affinity(c, profile) >= 0.8 : c.verification === "verified",
     );
-    const target = (pool.length ? pool : cards).sort((a, b) => b.fundedCents / b.goalCents - a.fundedCents / a.goalCents)[0];
+    const target = pool
+      .filter((c) => remainingCents(c.goalCents, c.fundedCents) > 0)
+      .sort((a, b) => b.fundedCents / b.goalCents - a.fundedCents / a.goalCents)[0];
     if (!target) continue;
+    // Gifts are limited to one per second per Patron.
+    if (results.length) await new Promise((res) => setTimeout(res, 1100));
     try {
       const res = await api.give({ requestId: target.id, amountCents: Math.min(r.amountCents, remainingCents(target.goalCents, target.fundedCents)), kind: "give", anonymous: u.anonymousByDefault });
       await updateDoc(doc(db, "users", u.id, "recurring", r.id), { lastRunAt: Timestamp.now() });
       results.push({ name: target.firstName, amountCents: res.gift.amountCents, giftId: res.gift.id });
+      cards.splice(cards.indexOf(target), 1, res.request);
     } catch {
       /* try again next visit */
     }
@@ -361,6 +369,9 @@ export async function blobToDataUrl(b: Blob): Promise<string> {
   });
 }
 export async function postMediaThanks(requestId: string, input: { blob: Blob; kind: "voice" | "video"; durationSec: number; caption: string | null; body: string }) {
+  // Check the note first so a rejected update never leaves an orphaned recording behind.
+  const body = input.body.trim();
+  if (body.length < 4 || body.length > 600) throw new ApiError(400, "Add a short message (4–600 characters) to go with it.");
   const dataUrl = await blobToDataUrl(input.blob);
   if (dataUrl.length > 900_000) throw new ApiError(413, input.kind === "voice" ? "That note is a little long — keep it under 45 seconds." : "Keep videos under 15 seconds.");
   const media = await addDoc(collection(db, "requests", requestId, "media"), {
@@ -371,7 +382,7 @@ export async function postMediaThanks(requestId: string, input: { blob: Blob; ki
     caption: input.caption,
     createdAt: serverTimestamp(),
   } satisfies MediaDoc);
-  await addDoc(collection(db, "requests", requestId, "updates"), { kind: "thanks", body: input.body, mediaId: media.id, createdAt: serverTimestamp() });
+  await addDoc(collection(db, "requests", requestId, "updates"), { kind: "thanks", body, mediaId: media.id, createdAt: serverTimestamp() });
 }
 export async function getMedia(requestId: string, mediaId: string): Promise<MediaDoc<number> | null> {
   const s = await getDoc(doc(db, "requests", requestId, "media", mediaId));

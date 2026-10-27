@@ -26,6 +26,9 @@ export default function Match() {
   const [error, setError] = useState<Error | null>(null);
   const [giving, setGiving] = useState(false);
   useEffect(() => watchMatch(id, setState, setError), [id]);
+  const refresh = () => {
+    for (const k of ["impact", "stats", "leaderboard", "activity", "active-cards"]) void qc.invalidateQueries({ queryKey: [k] });
+  };
 
   if (error) return <ErrorState error={error} className="py-24" />;
   if (state === undefined)
@@ -102,10 +105,10 @@ export default function Match() {
         }
         anonymousDefault={me?.user?.anonymousByDefault ?? false}
         onCancel={() => setGiving(false)}
-        onGiven={() => {
-          for (const k of ["impact", "stats", "leaderboard"]) void qc.invalidateQueries({ queryKey: [k] });
-        }}
+        onGiven={refresh}
+        onUndone={refresh}
         onDone={() => setGiving(false)}
+        doneLabel="Done"
       />
     </main>
   );

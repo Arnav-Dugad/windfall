@@ -90,8 +90,12 @@ function Row({ item, index, now, onOpen }: { item: ActivityItem; index: number; 
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline gap-2">
             <p className="min-w-0 flex-1 truncate text-[15px] font-semibold">{item.title}</p>
-            <span className="shrink-0 text-[12px] text-ink-3">{timeAgo(item.at, now)}</span>
-            {item.unread && <span className="size-2 shrink-0 self-center rounded-full bg-accent" aria-label="Unread" />}
+            {item.at > 0 && <span className="shrink-0 text-[12px] text-ink-3">{timeAgo(item.at, now)}</span>}
+            {item.unread && (
+              <span className="size-2 shrink-0 self-center rounded-full bg-accent">
+                <span className="sr-only">Unread</span>
+              </span>
+            )}
           </div>
           <p className="mt-0.5 line-clamp-2 text-[14px] text-ink-2">{item.body}</p>
           {(item.kind === "milestone" || item.kind === "cleared") && <Progress value={item.pct} size="sm" accent={item.card.accent} className="mt-2.5" />}

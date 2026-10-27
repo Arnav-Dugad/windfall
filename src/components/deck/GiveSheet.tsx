@@ -25,8 +25,10 @@ import { Ticker } from "@/components/ui/Ticker";
 import { ease, spring } from "@/design/motion";
 import { announce } from "@/lib/announce";
 import { api, type GiftResult } from "@/lib/api";
+import { useNow } from "@/lib/hooks";
 import { shareLink } from "@/lib/share";
 import { createMatch } from "@/lib/social";
+import { toast } from "@/lib/toast";
 import { cn, haptic } from "@/lib/utils";
 
 type Choice = { kind: "preset"; cents: number } | { kind: "clear" } | { kind: "custom" };
@@ -38,6 +40,8 @@ export function GiveSheet({
   onCancel,
   onGiven,
   onDone,
+  onUndone,
+  doneLabel = "Keep swiping",
   circleId,
   matchId,
   context,
@@ -60,6 +64,10 @@ export function GiveSheet({
   onGiven: (result: GiftResult) => void;
   /** Closed after a successful gift. */
   onDone: () => void;
+  /** The gift was undone from the confirmation (the sheet then closes). */
+  onUndone?: (giftId: string, request: RequestCard | null) => void;
+  /** Label for the confirmation's close button ("Keep swiping" on the deck, "Done" elsewhere). */
+  doneLabel?: string;
 }) {
   const [result, setResult] = useState<GiftResult | null>(null);
   // Each time the sheet opens it starts fresh (state adjusted during render, not in an effect).
@@ -86,7 +94,16 @@ export function GiveSheet({
     >
       {card &&
         (result ? (
-          <GiftConfirmed card={card} result={result} onDone={onDone} />
+          <GiftConfirmed
+            card={card}
+            result={result}
+            onDone={onDone}
+            doneLabel={doneLabel}
+            onUndone={(request) => {
+              onUndone?.(result.gift.id, request);
+              onDone();
+            }}
+          />
         ) : (
           <GiveForm
             card={card}
@@ -350,7 +367,29 @@ export function MiniCard({ card, pct, shared = true }: { card: RequestCard; pct?
   );
 }
 
-function GiftConfirmed({ card, result, onDone }: { card: RequestCard; result: GiftResult; onDone: () => void }) {
+function GiftConfirmed({
+  card,
+  result,
+  onDone,
+  onUndone,
+  doneLabel,
+}: {
+  card: RequestCard;
+  result: GiftResult;
+  onDone: () => void;
+  onUndone: (request: RequestCard | null) => void;
+  doneLabel: string;
+}) {
+  const now = useNow(1000);
+  const left = Math.max(0, result.gift.undoUntil - now);
+  const undo = useMutation({
+    mutationFn: () => api.reverseGift(result.gift.id),
+    onSuccess: (r) => {
+      announce(`Gift undone. ${card.firstName}’s total is back to where it was.`);
+      toast({ message: `Gift to ${card.firstName} undone`, tone: "accent" });
+      onUndone(r.request);
+    },
+  });
   const before = progress(card.goalCents, card.fundedCents);
   const after = progress(result.request.goalCents, result.request.fundedCents);
   const [shown, setShown] = useState(before);
@@ -378,11 +417,27 @@ function GiftConfirmed({ card, result, onDone }: { card: RequestCard; result: Gi
       </div>
       <div className="mt-7 grid gap-2.5">
         <Button className="w-full" size="lg" onClick={onDone}>
-          Keep swiping
+          {doneLabel}
         </Button>
         {!result.cleared && <MatchButton giftId={result.gift.id} name={card.firstName} />}
       </div>
-      <p className="mt-3 text-center text-[12.5px] text-ink-3">You can undo this gift for 2 minutes — press Z or tap Undo.</p>
+      {undo.error && (
+        <p role="alert" className="mt-3 text-center text-[13.5px] text-danger">
+          {undo.error.message}
+        </p>
+      )}
+      <p className="mt-3 flex items-center justify-center gap-1.5 text-center text-[12.5px] text-ink-3">
+        {left > 0 ? (
+          <>
+            You can undo this for 2 minutes.
+            <button onClick={() => undo.mutate()} disabled={undo.isPending} className="rounded font-semibold text-accent ring-focus disabled:opacity-60">
+              {undo.isPending ? "Undoing…" : "Undo gift"}
+            </button>
+          </>
+        ) : (
+          "This gift is final."
+        )}
+      </p>
     </div>
   );
 }

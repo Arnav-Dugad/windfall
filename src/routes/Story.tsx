@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, ArrowUp, BadgeCheck, Bell, BellRing, Flag, HandCoins, Languages, MessageCircleHeart, Newspaper, Users, X } from "lucide-react";
-import { m, useInView, useReducedMotion, useScroll, useTransform } from "motion/react";
+import { m, useReducedMotion, useScroll, useTransform } from "motion/react";
 import { RadioGroup } from "radix-ui";
 import { createContext, useCallback, useContext, useEffect, useId, useRef, useState, type RefObject } from "react";
 import { useLocation, useNavigate, useParams } from "react-router";
@@ -67,7 +67,8 @@ export function StoryOverlay() {
   useDocumentTitle(q.data ? `${possessive(q.data.request.firstName)} story` : "Story");
 
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && !document.querySelector("[role=dialog]") && close();
+    // Escape closes the story unless a sheet on top of it (give, report, circle…) is open — that one closes first.
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && !document.querySelector("[role=dialog]:not([data-story-overlay])") && close();
     window.addEventListener("keydown", onKey);
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -78,7 +79,7 @@ export function StoryOverlay() {
   }, [close]);
 
   return (
-    <div className="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-label="Story">
+    <div className="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-label="Story" data-story-overlay>
       <m.div
         className="absolute inset-0 bg-scrim"
         initial={{ opacity: 0 }}
@@ -133,12 +134,24 @@ function StoryContent({ story, aboveTabBar = false }: { story: RequestDetail; ab
   const heroScale = useTransform(scrollYProgress, [0, 1], reduce ? [1, 1] : [1.04, 1.14]);
   const heroDim = useTransform(scrollYProgress, [0, 1], [0, reduce ? 0 : 0.35]);
 
-  // The sticky give bar appears once the main funding panel has scrolled away.
+  // The sticky give bar appears once the main funding panel has scrolled up and away — not while it's still
+  // below the fold (then the bar would sit over the name and headline on a phone).
   const fund = useRef<HTMLElement>(null);
-  const fundInView = useInView(fund, { root: root ?? undefined, margin: "0px 0px -20% 0px" });
+  const [fundPassed, setFundPassed] = useState(false);
+  useEffect(() => {
+    const el = fund.current;
+    if (!el) return;
+    const io = new IntersectionObserver(
+      ([e]) => e && setFundPassed(!e.isIntersecting && e.boundingClientRect.top < (e.rootBounds?.top ?? 0)),
+      { root: root?.current ?? null, rootMargin: "0px 0px -20% 0px" },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [root]);
 
   const refreshAfterGift = () => {
-    for (const key of [["story", story.id], ["impact"], ["deck"], ["active-cards"], ["following", story.id]]) void qc.invalidateQueries({ queryKey: key });
+    for (const key of [["story", story.id], ["impact"], ["deck"], ["active-cards"], ["following", story.id], ["activity"], ["circles"], ["wrapped"], ["leaderboard"]])
+      void qc.invalidateQueries({ queryKey: key });
   };
 
   const clearIt = useMutation({
@@ -151,7 +164,18 @@ function StoryContent({ story, aboveTabBar = false }: { story: RequestDetail; ab
         message: `You cleared ${possessive(story.firstName)} debt · ${formatUSD(r.gift.amountCents)}`,
         tone: "positive",
         duration: 8000,
-        action: { label: "Undo", onClick: () => void api.reverseGift(r.gift.id).then(refreshAfterGift) },
+        action: {
+          label: "Undo",
+          onClick: () =>
+            void api
+              .reverseGift(r.gift.id)
+              .then(() => {
+                setCelebrate(null);
+                refreshAfterGift();
+                toast({ message: "Gift undone", tone: "accent" });
+              })
+              .catch((e: Error) => toast({ message: e.message, tone: "danger" })),
+        },
       });
     },
     onError: (e) => toast({ message: e.message, tone: "danger" }),
@@ -322,7 +346,7 @@ function StoryContent({ story, aboveTabBar = false }: { story: RequestDetail; ab
       {canGive && (
         <GiveBar
           story={story}
-          show={!fundInView}
+          show={fundPassed}
           aboveTabBar={aboveTabBar}
           isPatron={isPatron}
           clearing={clearIt.isPending}
@@ -349,6 +373,8 @@ function StoryContent({ story, aboveTabBar = false }: { story: RequestDetail; ab
           }
         }}
         onDone={() => setGiving(false)}
+        onUndone={refreshAfterGift}
+        doneLabel="Done"
       />
       <Celebration card={celebrate} onClose={() => setCelebrate(null)} />
       <ReportSheet open={reporting} onOpenChange={setReporting} requestId={story.id} name={story.firstName} />
@@ -390,8 +416,10 @@ function useStoryTranslation(story: RequestDetail) {
 
 function FollowButton({ story }: { story: RequestDetail }) {
   const qc = useQueryClient();
-  const key = ["following", story.id];
-  const q = useQuery({ queryKey: key, queryFn: () => isFollowing(story.id), staleTime: 60_000 });
+  // Keyed by user and held until the session is known: asked too early, the answer is always "not following".
+  const uid = useMe().data?.user?.id;
+  const key = ["following", story.id, uid];
+  const q = useQuery({ queryKey: key, queryFn: () => isFollowing(story.id), staleTime: 60_000, enabled: !!uid });
   const toggle = useMutation({
     mutationFn: (next: boolean) => (next ? follow(story.id, progress(story.goalCents, story.fundedCents)) : unfollow(story.id)),
     onMutate: async (next) => {
